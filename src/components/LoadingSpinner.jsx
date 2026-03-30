@@ -1,0 +1,14 @@
+export default function LoadingSpinner({ size = 'md' }) {
+    const sz = { sm: 'w-4 h-4', md: 'w-6 h-6', lg: 'w-10 h-10' }[size]
+    return (
+        <div className={`${sz} border-2 border-gray-200 border-t-brand-600 rounded-full animate-spin`} />
+    )
+}
+
+export function PageSpinner() {
+    return (
+        <div className="flex items-center justify-center h-48">
+            <LoadingSpinner size="lg" />
+        </div>
+    )
+}

@@ -3,7 +3,7 @@
 // ─────────────────────────────────────────────────────────
 
 export const CONVERSIONS = {
-    SEEDLINGS_PER_TON: 7000,
+    SEEDLINGS_PER_TON: 10000,
     EXCESS_KG_PER_TON: 500,
     SEEDLINGS_PER_TRAY: 70,
     COCOPEAT_PER_TRAY: 2.5,

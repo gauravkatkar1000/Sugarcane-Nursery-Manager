@@ -31,42 +31,66 @@ export function buildConfirmPlan(order, stock) {
         traysToFill -= readyUse;
     }
 
-    // ── Step 2: fill with loose materials ───────────────
+    // ── Step 2: identify deficits for loose preparation ──
     if (traysToFill > 0) {
-        const maxFromLoose = Math.min(
-            Math.floor(avail('seedlings') / CONVERSIONS.SEEDLINGS_PER_TRAY),
-            Math.floor(avail('tray')),
-            Math.floor(avail('cocopeat') / CONVERSIONS.COCOPEAT_PER_TRAY)
-        );
-        const looseUse = Math.min(maxFromLoose, traysToFill);
-        if (looseUse > 0) {
-            const seedUse = looseUse * CONVERSIONS.SEEDLINGS_PER_TRAY;
-            const coco = looseUse * CONVERSIONS.COCOPEAT_PER_TRAY;
+        const seedNeeded = traysToFill * CONVERSIONS.SEEDLINGS_PER_TRAY;
+        const trayNeeded = traysToFill;
+        const cocoNeeded = traysToFill * CONVERSIONS.COCOPEAT_PER_TRAY;
 
-            entries.push({ item: 'seedlings', change: -seedUse, type: LEDGER_TYPES.RESERVE, reference_id: id, note: ledgerNote.reserve('seedlings', seedUse, id) });
-            entries.push({ item: 'tray', change: -looseUse, type: LEDGER_TYPES.RESERVE, reference_id: id, note: ledgerNote.reserve('tray', looseUse, id) });
-            entries.push({ item: 'cocopeat', change: -coco, type: LEDGER_TYPES.RESERVE, reference_id: id, note: ledgerNote.reserve('cocopeat', coco, id) });
+        const seedHave = avail('seedlings');
+        const trayHave = avail('tray');
+        const cocoHave = avail('cocopeat');
 
-            breakdown.seedlings = seedUse;
-            breakdown.tray = looseUse;
-            breakdown.cocopeat = coco;
-            traysToFill -= looseUse;
-        }
-    }
+        const seedDeficit = Math.max(0, seedNeeded - seedHave);
+        const trayDeficit = Math.max(0, trayNeeded - trayHave);
+        const cocoDeficit = Math.max(0, cocoNeeded - cocoHave);
 
-    // ── Step 3: need conversion? ─────────────────────────
-    if (traysToFill > 0) {
-        const seedlingsNeeded = traysToFill * CONVERSIONS.SEEDLINGS_PER_TRAY;
-        const tonsNeeded = seedlingsNeeded / CONVERSIONS.SEEDLINGS_PER_TON;
-        if (avail('raw_sugarcane') >= tonsNeeded) {
+        // If no deficit, use all loose materials
+        if (seedDeficit === 0 && trayDeficit === 0 && cocoDeficit === 0) {
+            entries.push(
+                { item: 'seedlings', change: -seedNeeded, type: LEDGER_TYPES.RESERVE, reference_id: id, note: ledgerNote.reserve('seedlings', seedNeeded, id) },
+                { item: 'tray', change: -trayNeeded, type: LEDGER_TYPES.RESERVE, reference_id: id, note: ledgerNote.reserve('tray', trayNeeded, id) },
+                { item: 'cocopeat', change: -cocoNeeded, type: LEDGER_TYPES.RESERVE, reference_id: id, note: ledgerNote.reserve('cocopeat', cocoNeeded, id) }
+            );
+            breakdown.seedlings = seedNeeded;
+            breakdown.tray = trayNeeded;
+            breakdown.cocopeat = cocoNeeded;
+            traysToFill = 0;
+        } else {
+            // If only seedlings are missing and we have raw sugarcane
+            if (seedDeficit > 0 && trayDeficit === 0 && cocoDeficit === 0) {
+                const tonsRequired = seedDeficit / CONVERSIONS.SEEDLINGS_PER_TON;
+                if (avail('raw_sugarcane') >= tonsRequired) {
+                    // Reserve what we currently have as loose materials
+                    if (seedHave > 0) entries.push({ item: 'seedlings', change: -seedHave, type: LEDGER_TYPES.RESERVE, reference_id: id, note: ledgerNote.reserve('seedlings', seedHave, id) });
+                    if (trayHave > 0) entries.push({ item: 'tray', change: -trayHave, type: LEDGER_TYPES.RESERVE, reference_id: id, note: ledgerNote.reserve('tray', trayHave, id) });
+                    if (cocoHave > 0) entries.push({ item: 'cocopeat', change: -cocoHave, type: LEDGER_TYPES.RESERVE, reference_id: id, note: ledgerNote.reserve('cocopeat', cocoHave, id) });
+
+                    breakdown.seedlings = seedHave;
+                    breakdown.tray = trayHave;
+                    breakdown.cocopeat = cocoHave;
+
+                    return {
+                        ledgerEntries: entries,
+                        reservedBreakdown: breakdown,
+                        needsConversion: { tonsNeeded: tonsRequired, seedlingsShortfall: seedDeficit },
+                        error: null,
+                    };
+                }
+            }
+
+            // Otherwise, we have a hard shortage (especially cocopeat or trays)
+            const shortages = [];
+            if (seedDeficit > 0) shortages.push(`${seedDeficit.toLocaleString()} Seedlings`);
+            if (trayDeficit > 0) shortages.push(`${trayDeficit} Trays`);
+            if (cocoDeficit > 0) shortages.push(`${cocoDeficit.toFixed(1)} kg Cocopeat`);
+
             return {
-                ledgerEntries: entries,
+                ledgerEntries: [],
                 reservedBreakdown: breakdown,
-                needsConversion: { tonsNeeded, seedlingsShortfall: seedlingsNeeded },
-                error: null,
+                error: `Insufficient stock: Needs ${shortages.join(', ')}.`,
             };
         }
-        return { ledgerEntries: [], reservedBreakdown: breakdown, error: 'Insufficient stock to confirm this order.' };
     }
 
     return { ledgerEntries: entries, reservedBreakdown: breakdown, error: null };

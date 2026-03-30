@@ -1,14 +1,7 @@
 // ─────────────────────────────────────────────────────────
 // Business calculations – all pure functions
 // ─────────────────────────────────────────────────────────
-
-export const CONVERSIONS = {
-    SEEDLINGS_PER_TON: 10000,
-    EXCESS_KG_PER_TON: 500,
-    SEEDLINGS_PER_TRAY: 70,
-    COCOPEAT_PER_TRAY: 2.5,
-    TRAYS_PER_ACRE: 60,
-};
+import { CONVERSIONS } from './constants';
 
 // ── Order calculations ──────────────────────────────────
 export function calcOrder(acre) {

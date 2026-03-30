@@ -68,7 +68,7 @@ export default function Stock() {
                         </thead>
                         <tbody>
                             {loading.stock && (
-                                <tr><td colSpan={6} className="py-12 text-center"><LoadingSpinner /></td></tr>
+                                <tr><td colSpan={6} className="py-12"><div className="flex justify-center"><LoadingSpinner /></div></td></tr>
                             )}
                             {!loading.stock && stock.length === 0 && (
                                 <tr><td colSpan={6} className="py-12 text-center text-gray-400 text-sm">No stock entries yet. Add stock to get started.</td></tr>

@@ -112,7 +112,7 @@ export default function Orders() {
                         </thead>
                         <tbody>
                             {loading.orders && (
-                                <tr><td colSpan={6} className="py-12 text-center"><LoadingSpinner /></td></tr>
+                                <tr><td colSpan={6} className="py-12"><div className="flex justify-center"><LoadingSpinner /></div></td></tr>
                             )}
                             {!loading.orders && paged.length === 0 && (
                                 <tr><td colSpan={6} className="py-12 text-center text-gray-400 text-sm">No orders found</td></tr>

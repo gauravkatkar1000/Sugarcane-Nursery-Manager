@@ -3,7 +3,7 @@
 // ─────────────────────────────────────────────────────────
 
 export const CONVERSIONS = {
-    SEEDLINGS_PER_TON: 10000,
+    SEEDLINGS_PER_TON: 7000,
     EXCESS_KG_PER_TON: 500,
     SEEDLINGS_PER_TRAY: 70,
     COCOPEAT_PER_TRAY: 2.5,
@@ -44,7 +44,7 @@ export function tonsNeeded(seedlingDeficit) {
 // Returns { status: 'green'|'yellow'|'red', message, conversionsNeeded }
 // ─────────────────────────────────────────────────────────
 export function checkStockAvailability(stock, order) {
-    const { trays_required, seedlings_required } = order;
+    const { trays_required } = order;
 
     const get = (item) => {
         const s = stock.find((x) => x.item === item);
@@ -52,48 +52,51 @@ export function checkStockAvailability(stock, order) {
     };
 
     const freeReadyTrays = get('ready_tray');
+    if (freeReadyTrays >= trays_required) {
+        return { status: 'green', message: 'Sufficient ready trays available.', conversionsNeeded: 0 };
+    }
+
+    // Gap to fill with loose materials
+    const gapTrays = trays_required - freeReadyTrays;
+    const seedlingsNeeded = gapTrays * CONVERSIONS.SEEDLINGS_PER_TRAY;
+    const traysNeeded = gapTrays;
+    const cocopeatNeeded = gapTrays * CONVERSIONS.COCOPEAT_PER_TRAY;
+
     const freeSeedlings = get('seedlings');
     const freeTray = get('tray');
     const freeCocopeat = get('cocopeat');
     const freeRaw = get('raw_sugarcane');
 
-    // Check 1: do we have enough ready trays?
-    if (freeReadyTrays >= trays_required) {
-        return { status: 'green', message: 'Sufficient ready trays available.', conversionsNeeded: 0 };
+    const seedlingDeficit = Math.max(0, seedlingsNeeded - freeSeedlings);
+    const trayDeficit = Math.max(0, traysNeeded - freeTray);
+    const cocopeatDeficit = Math.max(0, cocopeatNeeded - freeCocopeat);
+
+    // If everything is in stock as loose materials
+    if (seedlingDeficit === 0 && trayDeficit === 0 && cocopeatDeficit === 0) {
+        return { status: 'green', message: `Ready to prepare ${gapTrays} trays from loose materials.`, conversionsNeeded: 0 };
     }
 
-    // Check 2: can we fill with loose materials?
-    const traysFromLoose = Math.min(
-        Math.floor(freeSeedlings / CONVERSIONS.SEEDLINGS_PER_TRAY),
-        Math.floor(freeTray),
-        Math.floor(freeCocopeat / CONVERSIONS.COCOPEAT_PER_TRAY)
-    );
-    const totalTraysCoveredByLoose = freeReadyTrays + traysFromLoose;
-
-    if (totalTraysCoveredByLoose >= trays_required) {
-        return {
-            status: 'green',
-            message: 'Sufficient loose materials available.',
-            conversionsNeeded: 0,
-        };
+    // If only seedlings are missing and we have raw sugarcane
+    if (seedlingDeficit > 0 && trayDeficit === 0 && cocopeatDeficit === 0) {
+        const tonsNeededForGap = tonsNeeded(seedlingDeficit);
+        if (freeRaw >= tonsNeededForGap) {
+            return {
+                status: 'yellow',
+                message: `Needs conversion of ~${tonsNeededForGap.toFixed(2)} ton(s) raw sugarcane for more seedlings.`,
+                conversionsNeeded: tonsNeededForGap,
+            };
+        }
     }
 
-    // Check 3: can we convert raw sugarcane to cover the gap?
-    const remainingTrays = trays_required - totalTraysCoveredByLoose;
-    const remainingSeedlings = remainingTrays * CONVERSIONS.SEEDLINGS_PER_TRAY;
-    const tonsRequired = tonsNeeded(remainingSeedlings);
-
-    if (freeRaw >= tonsRequired) {
-        return {
-            status: 'yellow',
-            message: `Needs conversion of ~${tonsRequired.toFixed(2)} ton(s) raw sugarcane.`,
-            conversionsNeeded: tonsRequired,
-        };
-    }
+    // List all shortages
+    const shortages = [];
+    if (seedlingDeficit > 0) shortages.push(`${seedlingDeficit.toLocaleString()} Seedlings`);
+    if (trayDeficit > 0) shortages.push(`${trayDeficit} Trays`);
+    if (cocopeatDeficit > 0) shortages.push(`${cocopeatDeficit.toFixed(1)} kg Cocopeat`);
 
     return {
         status: 'red',
-        message: 'Insufficient stock. Cannot fulfill this order.',
+        message: `Insufficient stock: Needs ${shortages.join(', ')}.`,
         conversionsNeeded: 0,
     };
 }

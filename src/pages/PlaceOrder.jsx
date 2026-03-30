@@ -61,8 +61,8 @@ export default function PlaceOrder() {
                         <input id="order-acre" type="number" min="0.1" step="0.1" className="input" placeholder="e.g. 5" value={form.acre} onChange={set('acre')} />
                     </div>
                     <div>
-                        <label className="label">Rate (₹/acre)</label>
-                        <input id="order-rate" type="number" className="input" placeholder="e.g. 4500" value={form.rate} onChange={set('rate')} />
+                        <label className="label">Rate (₹/seedling)</label>
+                        <input id="order-rate" type="number" step="0.01" className="input" placeholder="e.g. 1.50" value={form.rate} onChange={set('rate')} />
                     </div>
                     <div>
                         <label className="label">Delivery Date *</label>
@@ -88,9 +88,9 @@ export default function PlaceOrder() {
                             <p className="text-xs text-gray-500 mt-1">Seedlings Required</p>
                         </div>
                     </div>
-                    {form.rate && form.acre && (
+                    {form.rate && (
                         <div className="mt-3 text-center bg-white rounded-xl p-3 shadow-sm">
-                            <p className="text-xl font-bold text-gray-900">₹{(parseFloat(form.rate) * parseFloat(form.acre)).toLocaleString()}</p>
+                            <p className="text-xl font-bold text-gray-900">₹{(parseFloat(form.rate) * calculated.seedlings_required).toLocaleString()}</p>
                             <p className="text-xs text-gray-500 mt-1">Total Order Value</p>
                         </div>
                     )}
@@ -100,8 +100,8 @@ export default function PlaceOrder() {
             {/* Stock availability */}
             {availability && (
                 <div className={`card p-4 flex items-start gap-3 ${availability.status === 'green' ? 'bg-green-50  border-green-200' :
-                        availability.status === 'yellow' ? 'bg-amber-50  border-amber-200' :
-                            'bg-red-50    border-red-200'
+                    availability.status === 'yellow' ? 'bg-amber-50  border-amber-200' :
+                        'bg-red-50    border-red-200'
                     }`}>
                     {availability.status === 'green' && <CheckCircle className="w-5 h-5 text-green-600  flex-shrink-0 mt-0.5" />}
                     {availability.status === 'yellow' && <AlertCircle className="w-5 h-5 text-amber-600  flex-shrink-0 mt-0.5" />}
@@ -109,7 +109,7 @@ export default function PlaceOrder() {
 
                     <div>
                         <p className={`text-sm font-semibold ${availability.status === 'green' ? 'text-green-800' :
-                                availability.status === 'yellow' ? 'text-amber-800' : 'text-red-800'
+                            availability.status === 'yellow' ? 'text-amber-800' : 'text-red-800'
                             }`}>
                             {availability.status === 'green' ? 'Stock Available' : availability.status === 'yellow' ? 'Conversion Needed' : 'Insufficient Stock'}
                         </p>

@@ -4,7 +4,7 @@ import useAppStore from '../store/useAppStore'
 import Modal from '../components/Modal'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { ITEM_LABELS, ITEM_UNITS, LOW_STOCK_THRESHOLDS } from '../utils/constants'
-import { netAvailable } from '../utils/stock'
+import { getStockItem, netAvailable } from '../utils/stock'
 import { calcConversionFromRaw, calcTrayPrep, CONVERSIONS } from '../utils/calculations'
 import { format } from 'date-fns'
 

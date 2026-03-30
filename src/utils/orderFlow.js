@@ -135,7 +135,10 @@ export function buildPrepareEntries(order) {
         entries.push({ item: 'seedlings', change: -seedlings, type: LEDGER_TYPES.CONSUME_RESERVED, reference_id: id, note: ledgerNote.consume('seedlings', seedlings, id) });
         entries.push({ item: 'tray', change: -looseTrays, type: LEDGER_TYPES.CONSUME_RESERVED, reference_id: id, note: ledgerNote.consume('tray', looseTrays, id) });
         entries.push({ item: 'cocopeat', change: -cocopeat, type: LEDGER_TYPES.CONSUME_RESERVED, reference_id: id, note: ledgerNote.consume('cocopeat', cocopeat, id) });
+
+        // Output ready_trays are ADDED to stock AND RESERVED for this order
         entries.push({ item: 'ready_tray', change: looseTrays, type: LEDGER_TYPES.CONVERT_IN, reference_id: id, note: ledgerNote.convertIn('ready_tray', looseTrays, id) });
+        entries.push({ item: 'ready_tray', change: looseTrays, type: LEDGER_TYPES.RESERVE, reference_id: id, note: ledgerNote.reserve('ready_tray', looseTrays, id) });
     }
 
     return entries;
@@ -147,7 +150,7 @@ export function buildDeliverEntries(order) {
         {
             item: 'ready_tray',
             change: -order.trays_required,
-            type: LEDGER_TYPES.FINAL_CONSUME,
+            type: LEDGER_TYPES.CONSUME_RESERVED,
             reference_id: order.id,
             note: ledgerNote.deliver(order.trays_required, order.id),
         },

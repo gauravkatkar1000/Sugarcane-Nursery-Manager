@@ -1,6 +1,7 @@
 // ─────────────────────────────────────────────────────────
 // Business calculations – all pure functions
 // ─────────────────────────────────────────────────────────
+export { CONVERSIONS } from './constants';
 import { CONVERSIONS } from './constants';
 
 // ── Order calculations ──────────────────────────────────

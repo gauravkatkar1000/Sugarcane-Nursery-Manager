@@ -53,7 +53,7 @@ export default function AddStock() {
                             min="0.01"
                             step="any"
                             className="input"
-                            placeholder={`e.g. ${form.item === 'raw_sugarcane' ? '5' : form.item === 'seedlings' ? '10000' : '100'}`}
+                            placeholder={`e.g. ${form.item === 'raw_sugarcane' ? '5' : form.item === 'seedlings' ? '7000' : '100'}`}
                             value={form.quantity}
                             onChange={set('quantity')}
                         />

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { RefreshCw, ArrowRightLeft, Archive, History } from 'lucide-react'
+import { RefreshCw, ArrowRightLeft, Archive, History, AlertCircle } from 'lucide-react'
 import useAppStore from '../store/useAppStore'
 import Modal from '../components/Modal'
 import LoadingSpinner from '../components/LoadingSpinner'
@@ -26,11 +26,19 @@ export default function Stock() {
     const conversionPreview = calcConversionFromRaw(parseFloat(tons) || 0)
     const prepPreview = calcTrayPrep(parseInt(trays) || 0)
 
+    const canConvert = tons > 0 && netAvailable(getStockItem(stock, 'raw_sugarcane')) >= parseFloat(tons)
+    const canPrepare = trays > 0 &&
+        netAvailable(getStockItem(stock, 'seedlings')) >= prepPreview.seedlings_needed &&
+        netAvailable(getStockItem(stock, 'tray')) >= prepPreview.trays_needed &&
+        netAvailable(getStockItem(stock, 'cocopeat')) >= prepPreview.cocopeat_needed
+
     const handleConvert = async () => {
+        if (!canConvert) return
         await convertRaw(parseFloat(tons))
         setTons(''); setConvertModal(false)
     }
     const handlePrepareTray = async () => {
+        if (!canPrepare) return
         await prepareTrays(parseInt(trays))
         setTrays(''); setPrepareModal(false)
     }
@@ -125,7 +133,12 @@ export default function Stock() {
                             </div>
                         </div>
                     )}
-                    <button className="btn-primary w-full" onClick={handleConvert} disabled={!tons || loading.convertRaw}>
+                    {tons > 0 && !canConvert && (
+                        <p className="text-xs text-red-600 font-medium flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" /> Insufficient raw sugarcane in stock.
+                        </p>
+                    )}
+                    <button className="btn-primary w-full" onClick={handleConvert} disabled={!canConvert || loading.convertRaw}>
                         {loading.convertRaw ? <LoadingSpinner size="sm" /> : <ArrowRightLeft className="w-4 h-4" />}
                         Convert Now
                     </button>
@@ -148,7 +161,12 @@ export default function Stock() {
                             <div className="border-t border-purple-100 pt-2 flex justify-between text-sm"><span className="text-gray-600">Ready Trays produced</span><span className="font-semibold text-green-700">+{trays}</span></div>
                         </div>
                     )}
-                    <button className="btn-primary w-full" onClick={handlePrepareTray} disabled={!trays || loading.prepareTrays}>
+                    {trays > 0 && !canPrepare && (
+                        <p className="text-xs text-red-600 font-medium flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" /> Insufficient loose materials. Please check your Net Available stock.
+                        </p>
+                    )}
+                    <button className="btn-primary w-full" onClick={handlePrepareTray} disabled={!canPrepare || loading.prepareTrays}>
                         {loading.prepareTrays ? <LoadingSpinner size="sm" /> : <Archive className="w-4 h-4" />}
                         Prepare Trays
                     </button>

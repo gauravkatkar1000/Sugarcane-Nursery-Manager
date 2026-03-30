@@ -146,7 +146,7 @@ export default function Dashboard() {
                         <table className="w-full min-w-[500px]">
                             <thead>
                                 <tr>
-                                    {['Customer', 'Acre', 'Trays', 'Delivery', 'Status'].map((h) => (
+                                    {['Customer', 'Acre', 'Trays', 'Delivery', 'Status', 'Actions'].map((h) => (
                                         <th key={h} className="table-th first:pl-0 first:rounded-l-lg last:rounded-r-lg">{h}</th>
                                     ))}
                                 </tr>
@@ -159,6 +159,21 @@ export default function Dashboard() {
                                         <td className="table-td">{o.trays_required}</td>
                                         <td className="table-td">{o.delivery_date}</td>
                                         <td className="table-td"><StatusBadge status={o.status} /></td>
+                                        <td className="table-td">
+                                            {['PENDING', 'CONFIRMED', 'PREPARED'].includes(o.status) && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        if (confirm(`Cancel order for ${o.name}?`)) {
+                                                            useAppStore.getState().cancelOrder(o.id);
+                                                        }
+                                                    }}
+                                                    className="text-xs bg-red-100 text-red-700 px-2.5 py-1 rounded-lg font-semibold hover:bg-red-200 transition-colors"
+                                                >
+                                                    {loading[`cancel_${o.id}`] ? '...' : 'Cancel'}
+                                                </button>
+                                            )}
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>

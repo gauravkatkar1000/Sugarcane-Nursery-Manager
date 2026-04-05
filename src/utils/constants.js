@@ -67,6 +67,7 @@ export const LEDGER_TYPES = {
     CONVERT_OUT: 'CONVERT_OUT',      // Input consumed in conversion (raw/tray/cocopeat used)
     CONSUME_RESERVED: 'CONSUME_RESERVED', // Materials consumed during prepare
     FINAL_CONSUME: 'FINAL_CONSUME',    // Delivery — ready_tray deducted
+    REVERSAL: 'REVERSAL',          // Reversal of a previous transaction
 };
 
 // Auto-generated note templates (mandatory in code, no UI input needed)
@@ -78,4 +79,5 @@ export const ledgerNote = {
     convertOut: (item, qty, refId) => `CONVERT_OUT: -${qty} ${ITEM_LABELS[item] || item} [ref: ${refId}]`,
     consume: (item, qty, orderId) => `CONSUME_RESERVED: -${qty} ${ITEM_UNITS[item] || ''} for prepare order ${orderId}`,
     deliver: (qty, orderId) => `FINAL_CONSUME: -${qty} ready_tray delivered for order ${orderId}`,
+    reversal: (refId) => `REVERSAL of transaction ${refId}`,
 };

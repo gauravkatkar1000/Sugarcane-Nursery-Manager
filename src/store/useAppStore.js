@@ -249,6 +249,30 @@ const useAppStore = create((set, get) => ({
             get().setLoading('prepareTrays', false);
         }
     },
+
+    // ── reverse transaction ──────────────────────────────────
+    reverseTransaction: async (transaction) => {
+        get().setLoading('reverseTransaction', true);
+        try {
+            const entries = [{
+                item: transaction.item,
+                change: -Number(transaction.change),
+                type: 'REVERSAL',
+                reference_id: transaction.id || transaction.reference_id,
+                note: ledgerNote.reversal(transaction.id || 'unknown'),
+            }];
+            const updatedStock = await api.addLedgerEntries(entries);
+            get()._applyStockUpdate(updatedStock);
+            await get().fetchLedger();
+            toast.success(`Reversed transaction ${transaction.id || ''}`);
+            return true;
+        } catch (e) {
+            toast.error('Reversal failed: ' + e.message);
+            return false;
+        } finally {
+            get().setLoading('reverseTransaction', false);
+        }
+    },
 }));
 
 export default useAppStore;

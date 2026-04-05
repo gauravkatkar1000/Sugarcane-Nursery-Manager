@@ -4,7 +4,7 @@ import useAppStore from '../store/useAppStore'
 import StatusBadge from '../components/StatusBadge'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { ORDER_STATUSES } from '../utils/constants'
-import { format, isWithinInterval, parseISO } from 'date-fns'
+import { formatDateIST } from '../utils/dateUtils'
 
 const PAGE_SIZE = 10
 
@@ -85,7 +85,52 @@ export default function Orders() {
 
             {/* Table */}
             <div className="card overflow-hidden">
-                <div className="overflow-x-auto">
+                {/* Mobile Cards */}
+                <div className="md:hidden flex flex-col gap-3 p-4 bg-gray-50">
+                    {loading.orders && <div className="py-8 flex justify-center"><LoadingSpinner /></div>}
+                    {!loading.orders && paged.length === 0 && <p className="text-center text-gray-400 text-sm py-8">No orders found</p>}
+                    {paged.map((o) => (
+                        <div key={o.id} className="bg-white border rounded-xl p-4 shadow-sm space-y-3">
+                            <div className="flex items-center justify-between">
+                                <h3 className="font-bold text-gray-900 text-lg">{o.name}</h3>
+                                <StatusBadge status={o.status} />
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 text-center text-sm">
+                                <div className="bg-gray-50 rounded-lg p-2 border border-gray-100">
+                                    <p className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-0.5">Acre</p>
+                                    <p className="font-semibold text-gray-800">{o.acre}</p>
+                                </div>
+                                <div className="bg-gray-50 rounded-lg p-2 border border-gray-100">
+                                    <p className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-0.5">Trays</p>
+                                    <p className="font-semibold text-gray-800">{o.trays_required}</p>
+                                </div>
+                                <div className="bg-brand-50 rounded-lg p-2 border border-brand-100/50">
+                                    <p className="text-[10px] uppercase text-brand-600/80 font-bold tracking-wider mb-0.5">Target</p>
+                                    <p className="font-semibold text-brand-700 text-xs sm:text-sm mt-0.5">{formatDateIST(o.delivery_date)}</p>
+                                </div>
+                            </div>
+                            <div className="border-t border-gray-100 pt-3">
+                                <div className="grid grid-cols-2 gap-2">
+                                    {o.status === 'PENDING' && (
+                                        <ActionBtn fullWidth id={`m-confirm-${o.id}`} label="Confirm" color="blue" loading={loading[`confirm_${o.id}`]} onClick={() => confirmOrder(o.id)} />
+                                    )}
+                                    {o.status === 'CONFIRMED' && (
+                                        <ActionBtn fullWidth id={`m-prepare-${o.id}`} label="Prepare" color="purple" loading={loading[`prepare_${o.id}`]} onClick={() => prepareOrder(o.id)} />
+                                    )}
+                                    {o.status === 'PREPARED' && (
+                                        <ActionBtn fullWidth id={`m-deliver-${o.id}`} label="Deliver" color="green" loading={loading[`deliver_${o.id}`]} onClick={() => deliverOrder(o.id)} />
+                                    )}
+                                    {['PENDING', 'CONFIRMED', 'PREPARED'].includes(o.status) && (
+                                        <ActionBtn fullWidth id={`m-cancel-${o.id}`} label="Cancel" color="red" loading={loading[`cancel_${o.id}`]} onClick={() => cancelOrder(o.id)} />
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Desktop Table */}
+                <div className="hidden md:block overflow-x-auto">
                     <table className="w-full min-w-[800px]">
                         <thead>
                             <tr>
@@ -156,7 +201,7 @@ function OrderRow({ order, loading, onConfirm, onPrepare, onDeliver, onCancel })
             <td className="table-td font-medium text-gray-900">{order.name}</td>
             <td className="table-td">{order.acre}</td>
             <td className="table-td">{order.trays_required}</td>
-            <td className="table-td text-gray-500">{order.delivery_date}</td>
+            <td className="table-td text-gray-500">{formatDateIST(order.delivery_date)}</td>
             <td className="table-td"><StatusBadge status={order.status} /></td>
             <td className="table-td">
                 <div className="flex items-center gap-1 flex-wrap">
@@ -178,19 +223,20 @@ function OrderRow({ order, loading, onConfirm, onPrepare, onDeliver, onCancel })
     )
 }
 
-function ActionBtn({ id, label, color, loading, onClick }) {
+function ActionBtn({ id, label, color, loading, onClick, fullWidth }) {
     const colors = {
         blue: 'bg-blue-100 text-blue-700 hover:bg-blue-200',
         purple: 'bg-purple-100 text-purple-700 hover:bg-purple-200',
         green: 'bg-green-100 text-green-700 hover:bg-green-200',
         red: 'bg-red-100 text-red-700 hover:bg-red-200',
     }
+    const widthClass = fullWidth ? 'w-full py-2 text-sm flex justify-center items-center' : 'px-2.5 py-1 text-xs'
     return (
         <button
             id={id}
             onClick={onClick}
             disabled={loading}
-            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 ${colors[color]}`}
+            className={`${widthClass} rounded-lg font-semibold transition-colors disabled:opacity-50 ${colors[color]}`}
         >
             {loading ? <LoadingSpinner size="sm" /> : label}
         </button>

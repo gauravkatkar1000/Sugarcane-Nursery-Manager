@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { RefreshCw, ArrowRightLeft, Archive, History, AlertCircle } from 'lucide-react'
+import { RefreshCw, ArrowRightLeft, Archive, History, AlertCircle, Undo2 } from 'lucide-react'
 import useAppStore from '../store/useAppStore'
 import Modal from '../components/Modal'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { ITEM_LABELS, ITEM_UNITS, LOW_STOCK_THRESHOLDS } from '../utils/constants'
 import { getStockItem, netAvailable } from '../utils/stock'
 import { calcConversionFromRaw, calcTrayPrep, CONVERSIONS } from '../utils/calculations'
-import { format } from 'date-fns'
+import { formatDateTimeIST } from '../utils/dateUtils'
 
 export default function Stock() {
     const stock = useAppStore((s) => s.stock)
@@ -15,6 +15,7 @@ export default function Stock() {
     const fetchLedger = useAppStore((s) => s.fetchLedger)
     const convertRaw = useAppStore((s) => s.convertRaw)
     const prepareTrays = useAppStore((s) => s.prepareTrays)
+    const reverseTransaction = useAppStore((s) => s.reverseTransaction)
 
     const [convertModal, setConvertModal] = useState(false)
     const [prepareModal, setPrepareModal] = useState(false)
@@ -44,6 +45,12 @@ export default function Stock() {
     }
     const openLedger = () => { fetchLedger(); setLedgerModal(true) }
 
+    const handleReverse = async (l) => {
+        if (window.confirm(`Are you sure you want to reverse this transaction? \r\n${l.change > 0 ? '+' : ''}${l.change} ${ITEM_LABELS[l.item] || l.item}`)) {
+            await reverseTransaction(l)
+        }
+    }
+
     return (
         <div className="space-y-4">
             {/* Action buttons */}
@@ -65,7 +72,45 @@ export default function Stock() {
                     <h3 className="font-semibold text-gray-900">Current Stock</h3>
                     <p className="text-xs text-gray-400 mt-0.5">Net = Available − Reserved</p>
                 </div>
-                <div className="overflow-x-auto">
+                {/* Mobile Cards */}
+                <div className="md:hidden flex flex-col gap-3 p-4 bg-gray-50">
+                    {loading.stock && <div className="py-8 flex justify-center"><LoadingSpinner /></div>}
+                    {!loading.stock && stock.length === 0 && <p className="text-center text-gray-400 text-sm py-8">No stock entries yet.</p>}
+                    {!loading.stock && stock.map((s) => {
+                        const net = netAvailable(s)
+                        const threshold = LOW_STOCK_THRESHOLDS[s.item]
+                        const isLow = threshold > 0 && net < threshold
+                        return (
+                            <div key={s.item} className="bg-white border rounded-xl p-4 shadow-sm space-y-3">
+                                <div className="flex justify-between items-center bg-white">
+                                    <span className="font-semibold text-gray-900">{ITEM_LABELS[s.item] || s.item}</span>
+                                    {isLow ? (
+                                        <span className="badge bg-red-100 text-red-700">⚠ Low</span>
+                                    ) : (
+                                        <span className="badge bg-green-100 text-green-700">OK</span>
+                                    )}
+                                </div>
+                                <div className="grid grid-cols-3 gap-2 text-sm text-center">
+                                    <div className="bg-gray-50 rounded-lg p-2">
+                                        <p className="text-[10px] uppercase text-gray-500 mb-0.5 tracking-wider font-semibold">Available</p>
+                                        <p className="font-medium text-gray-800">{s.available || 0}</p>
+                                    </div>
+                                    <div className="bg-amber-50 rounded-lg p-2">
+                                        <p className="text-[10px] uppercase text-amber-600/70 mb-0.5 tracking-wider font-semibold">Reserved</p>
+                                        <p className="font-medium text-amber-700">{s.reserved || 0}</p>
+                                    </div>
+                                    <div className={isLow ? 'bg-red-50 rounded-lg p-2' : 'bg-green-50 rounded-lg p-2'}>
+                                        <p className={`text-[10px] uppercase mb-0.5 tracking-wider font-semibold ${isLow ? 'text-red-500/80' : 'text-green-600/70'}`}>Net</p>
+                                        <p className={`font-bold ${isLow ? 'text-red-600' : 'text-green-700'}`}>{net}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )
+                    })}
+                </div>
+
+                {/* Desktop Table */}
+                <div className="hidden md:block overflow-x-auto">
                     <table className="w-full min-w-[500px]">
                         <thead>
                             <tr>
@@ -178,37 +223,86 @@ export default function Stock() {
                 {loading.ledger ? (
                     <div className="flex justify-center py-8"><LoadingSpinner size="lg" /></div>
                 ) : (
-                    <div className="overflow-x-auto -mx-6 px-6">
-                        <table className="w-full min-w-[600px]">
-                            <thead>
-                                <tr>
-                                    {['Date', 'Item', 'Change', 'Type', 'Note', 'Ref'].map((h) => (
-                                        <th key={h} className="table-th">{h}</th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {ledger.length === 0 && (
-                                    <tr><td colSpan={6} className="py-8 text-center text-gray-400 text-sm">No transactions yet</td></tr>
-                                )}
-                                {[...ledger].reverse().map((l) => (
-                                    <tr key={l.id} className="hover:bg-gray-50">
-                                        <td className="table-td text-xs text-gray-400 whitespace-nowrap">
-                                            {l.date ? format(new Date(l.date), 'dd MMM yy HH:mm') : '—'}
-                                        </td>
-                                        <td className="table-td text-xs font-medium">{ITEM_LABELS[l.item] || l.item}</td>
-                                        <td className={`table-td font-semibold text-sm ${Number(l.change) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    <div>
+                        {/* Mobile Cards */}
+                        <div className="md:hidden flex flex-col gap-3 p-4 bg-gray-50 -mt-4 -mb-4">
+                            {ledger.length === 0 && <p className="text-center text-gray-400 text-sm py-4">No transactions yet</p>}
+                            {[...ledger].reverse().map((l) => (
+                                <div key={l.id} className="bg-white border rounded-xl shadow-sm p-4 space-y-3">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <p className="font-semibold text-gray-900">{ITEM_LABELS[l.item] || l.item}</p>
+                                            <p className="text-xs text-gray-500 mt-0.5">{formatDateTimeIST(l.date)}</p>
+                                        </div>
+                                        <div className={`font-bold text-lg ${Number(l.change) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                             {Number(l.change) >= 0 ? '+' : ''}{l.change}
-                                        </td>
-                                        <td className="table-td">
-                                            <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{l.type}</span>
-                                        </td>
-                                        <td className="table-td text-xs text-gray-500 max-w-[200px] truncate" title={l.note}>{l.note || '—'}</td>
-                                        <td className="table-td text-xs text-gray-400 font-mono truncate max-w-[80px]">{l.reference_id}</td>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        <span className="text-[10px] uppercase font-semibold bg-gray-100 text-gray-700 px-2 py-0.5 rounded-md">{l.type}</span>
+                                        <span className="text-[10px] text-gray-400 font-mono tracking-wide py-0.5">REF: {l.reference_id}</span>
+                                    </div>
+                                    {l.note && <p className="text-xs text-gray-500 bg-gray-50 border border-gray-100 p-2 rounded-lg line-clamp-2">{l.note}</p>}
+                                    {l.type !== 'REVERSAL' && (
+                                        <div className="pt-3 flex justify-end">
+                                            <button
+                                                onClick={() => handleReverse(l)}
+                                                className="btn-secondary py-1.5 px-3 text-xs w-full sm:w-auto"
+                                                disabled={loading.reverseTransaction}
+                                            >
+                                                <Undo2 className="w-3.5 h-3.5" /> Reverse Transaction
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Desktop Table */}
+                        <div className="hidden md:block overflow-x-auto -mx-6 px-6">
+                            <table className="w-full min-w-[600px]">
+                                <thead>
+                                    <tr>
+                                        {['Date', 'Item', 'Change', 'Type', 'Note', 'Ref', 'Action'].map((h) => (
+                                            <th key={h} className="table-th">{h}</th>
+                                        ))}
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {ledger.length === 0 && (
+                                        <tr><td colSpan={7} className="py-8 text-center text-gray-400 text-sm">No transactions yet</td></tr>
+                                    )}
+                                    {[...ledger].reverse().map((l) => (
+                                        <tr key={l.id} className="hover:bg-gray-50">
+                                            <td className="table-td text-xs text-gray-400 whitespace-nowrap">
+                                                {formatDateTimeIST(l.date)}
+                                            </td>
+                                            <td className="table-td text-xs font-medium">{ITEM_LABELS[l.item] || l.item}</td>
+                                            <td className={`table-td font-semibold text-sm ${Number(l.change) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                {Number(l.change) >= 0 ? '+' : ''}{l.change}
+                                            </td>
+                                            <td className="table-td">
+                                                <span className="text-[10px] uppercase font-semibold bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{l.type}</span>
+                                            </td>
+                                            <td className="table-td text-xs text-gray-500 max-w-[200px] truncate" title={l.note}>{l.note || '—'}</td>
+                                            <td className="table-td text-xs text-gray-400 font-mono truncate max-w-[80px]">{l.reference_id}</td>
+                                            <td className="table-td text-center">
+                                                {l.type !== 'REVERSAL' && (
+                                                    <button
+                                                        onClick={() => handleReverse(l)}
+                                                        className="p-1.5 text-gray-400 hover:text-red-600 transition-colors rounded-full hover:bg-red-50"
+                                                        title="Reverse Transaction"
+                                                        disabled={loading.reverseTransaction}
+                                                    >
+                                                        <Undo2 className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 )}
             </Modal>

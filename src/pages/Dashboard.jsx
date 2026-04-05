@@ -5,8 +5,7 @@ import useAppStore from '../store/useAppStore'
 import StatusBadge from '../components/StatusBadge'
 import { ITEM_LABELS, ITEM_UNITS, LOW_STOCK_THRESHOLDS } from '../utils/constants'
 import { getStockItem, netAvailable } from '../utils/stock'
-import { format } from 'date-fns'
-
+import { formatFullDateIST, formatDateIST } from '../utils/dateUtils'
 export default function Dashboard() {
     const orders = useAppStore((s) => s.orders)
     const stock = useAppStore((s) => s.stock)
@@ -42,7 +41,7 @@ export default function Dashboard() {
                     <div>
                         <h2 className="font-semibold text-lg">Sugarcane Nursery Manager</h2>
                         <p className="text-brand-100 text-sm">
-                            {format(new Date(), 'EEEE, dd MMMM yyyy')}
+                            {formatFullDateIST(new Date())}
                         </p>
                     </div>
                 </div>
@@ -142,43 +141,87 @@ export default function Dashboard() {
                         <Link to="/place-order" className="btn-primary mt-4 inline-flex">Create First Order</Link>
                     </div>
                 ) : (
-                    <div className="overflow-x-auto -mx-5 px-5">
-                        <table className="w-full min-w-[500px]">
-                            <thead>
-                                <tr>
-                                    {['Customer', 'Acre', 'Trays', 'Delivery', 'Status', 'Actions'].map((h) => (
-                                        <th key={h} className="table-th first:pl-0 first:rounded-l-lg last:rounded-r-lg">{h}</th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {recentOrders.map((o) => (
-                                    <tr key={o.id} className="hover:bg-gray-50 transition-colors">
-                                        <td className="table-td font-medium text-gray-900">{o.name}</td>
-                                        <td className="table-td">{o.acre} ac</td>
-                                        <td className="table-td">{o.trays_required}</td>
-                                        <td className="table-td">{o.delivery_date}</td>
-                                        <td className="table-td"><StatusBadge status={o.status} /></td>
-                                        <td className="table-td">
-                                            {['PENDING', 'CONFIRMED', 'PREPARED'].includes(o.status) && (
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.preventDefault();
-                                                        if (confirm(`Cancel order for ${o.name}?`)) {
-                                                            useAppStore.getState().cancelOrder(o.id);
-                                                        }
-                                                    }}
-                                                    className="text-xs bg-red-100 text-red-700 px-2.5 py-1 rounded-lg font-semibold hover:bg-red-200 transition-colors"
-                                                >
-                                                    {loading[`cancel_${o.id}`] ? '...' : 'Cancel'}
-                                                </button>
-                                            )}
-                                        </td>
+                    <>
+                        {/* Mobile Cards */}
+                        <div className="md:hidden flex flex-col gap-3">
+                            {recentOrders.map((o) => (
+                                <div key={o.id} className="bg-white border rounded-xl p-4 shadow-sm space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="font-bold text-gray-900 text-lg">{o.name}</h3>
+                                        <StatusBadge status={o.status} />
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2 text-center text-sm">
+                                        <div className="bg-gray-50 rounded-lg p-2 border border-gray-100">
+                                            <p className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-0.5">Acre</p>
+                                            <p className="font-semibold text-gray-800">{o.acre}</p>
+                                        </div>
+                                        <div className="bg-gray-50 rounded-lg p-2 border border-gray-100">
+                                            <p className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-0.5">Trays</p>
+                                            <p className="font-semibold text-gray-800">{o.trays_required}</p>
+                                        </div>
+                                        <div className="bg-brand-50 rounded-lg p-2 border border-brand-100/50">
+                                            <p className="text-[10px] uppercase text-brand-600/80 font-bold tracking-wider mb-0.5">Target</p>
+                                            <p className="font-semibold text-brand-700 text-xs sm:text-sm mt-0.5">{formatDateIST(o.delivery_date)}</p>
+                                        </div>
+                                    </div>
+                                    {['PENDING', 'CONFIRMED', 'PREPARED'].includes(o.status) && (
+                                        <div className="border-t border-gray-100 pt-3 flex w-full">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    if (confirm(`Cancel order for ${o.name}?`)) {
+                                                        useAppStore.getState().cancelOrder(o.id);
+                                                    }
+                                                }}
+                                                className="w-full text-sm bg-red-100 text-red-700 px-3 py-2 flex justify-center items-center rounded-lg font-semibold hover:bg-red-200 transition-colors"
+                                            >
+                                                {loading[`cancel_${o.id}`] ? '...' : 'Cancel Order'}
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Desktop Table */}
+                        <div className="hidden md:block overflow-x-auto -mx-5 px-5">
+                            <table className="w-full min-w-[500px]">
+                                <thead>
+                                    <tr>
+                                        {['Customer', 'Acre', 'Trays', 'Delivery', 'Status', 'Actions'].map((h) => (
+                                            <th key={h} className="table-th first:pl-0 first:rounded-l-lg last:rounded-r-lg">{h}</th>
+                                        ))}
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody>
+                                    {recentOrders.map((o) => (
+                                        <tr key={o.id} className="hover:bg-gray-50 transition-colors">
+                                            <td className="table-td font-medium text-gray-900">{o.name}</td>
+                                            <td className="table-td">{o.acre} ac</td>
+                                            <td className="table-td">{o.trays_required}</td>
+                                            <td className="table-td">{formatDateIST(o.delivery_date)}</td>
+                                            <td className="table-td"><StatusBadge status={o.status} /></td>
+                                            <td className="table-td">
+                                                {['PENDING', 'CONFIRMED', 'PREPARED'].includes(o.status) && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            if (confirm(`Cancel order for ${o.name}?`)) {
+                                                                useAppStore.getState().cancelOrder(o.id);
+                                                            }
+                                                        }}
+                                                        className="text-xs bg-red-100 text-red-700 px-2.5 py-1 rounded-lg font-semibold hover:bg-red-200 transition-colors"
+                                                    >
+                                                        {loading[`cancel_${o.id}`] ? '...' : 'Cancel'}
+                                                    </button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </>
                 )}
             </div>
         </div>

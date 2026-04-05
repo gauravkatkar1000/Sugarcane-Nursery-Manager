@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Package, ShoppingCart, AlertTriangle, TrendingUp, ArrowRight, Sprout } from 'lucide-react'
 import useAppStore from '../store/useAppStore'
 import StatusBadge from '../components/StatusBadge'
+import LoadingSpinner from '../components/LoadingSpinner'
 import { ITEM_LABELS, ITEM_UNITS, LOW_STOCK_THRESHOLDS } from '../utils/constants'
 import { getStockItem, netAvailable } from '../utils/stock'
 import { formatFullDateIST, formatDateIST } from '../utils/dateUtils'
@@ -57,7 +58,11 @@ export default function Dashboard() {
                 ].map(({ label, value, color, bg }) => (
                     <div key={label} className="card p-4">
                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{label}</p>
-                        <p className={`text-3xl font-bold mt-1 ${color}`}>{value}</p>
+                        {loading.orders ? (
+                            <p className={`text-3xl font-bold mt-1 text-gray-300 animate-pulse`}>...</p>
+                        ) : (
+                            <p className={`text-3xl font-bold mt-1 ${color}`}>{value}</p>
+                        )}
                         <p className="text-xs text-gray-400 mt-1">orders</p>
                     </div>
                 ))}
@@ -103,7 +108,11 @@ export default function Dashboard() {
                         </Link>
                     </div>
                     <div className="space-y-2">
-                        {stock.length === 0 ? (
+                        {loading.stock ? (
+                            <div className="py-8 flex justify-center">
+                                <LoadingSpinner size="md" />
+                            </div>
+                        ) : stock.length === 0 ? (
                             <p className="text-sm text-gray-400 text-center py-4">No stock data yet</p>
                         ) : (
                             stock.map((s) => {
@@ -135,7 +144,11 @@ export default function Dashboard() {
                         View all <ArrowRight className="w-3 h-3" />
                     </Link>
                 </div>
-                {recentOrders.length === 0 ? (
+                {loading.orders ? (
+                    <div className="py-12 flex justify-center">
+                        <LoadingSpinner size="lg" />
+                    </div>
+                ) : recentOrders.length === 0 ? (
                     <div className="text-center py-8">
                         <p className="text-sm text-gray-400">No orders yet.</p>
                         <Link to="/place-order" className="btn-primary mt-4 inline-flex">Create First Order</Link>

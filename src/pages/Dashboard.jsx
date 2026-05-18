@@ -36,7 +36,7 @@ export default function Dashboard() {
         , [stock])
 
     const recentOrders = useMemo(() =>
-        [...orders].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5)
+        [...orders].filter((o) => o.status !== 'CANCELLED').sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5)
         , [orders])
 
     return (

@@ -1,14 +1,18 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { PlusCircle } from 'lucide-react'
 import useAppStore from '../store/useAppStore'
 import { ALL_ITEMS, ITEM_LABELS, ITEM_UNITS } from '../utils/constants'
 import LoadingSpinner from '../components/LoadingSpinner'
 
+const CUSTOM_KEY = '__custom__'
+
 export default function AddStock() {
     const addStock = useAppStore((s) => s.addStock)
-    const loading = useAppStore((s) => s.loading)
+    const stock    = useAppStore((s) => s.stock)
+    const loading  = useAppStore((s) => s.loading)
 
     const [form, setForm] = useState({ item: 'raw_sugarcane', quantity: '', note: '' })
+    const [customItem, setCustomItem] = useState('')
     const [done, setDone] = useState(false)
 
     const set = (field) => (e) => {
@@ -16,16 +20,28 @@ export default function AddStock() {
         setDone(false)
     }
 
+    // Items in stock that aren't in the standard list
+    const extraItems = useMemo(
+        () => stock.map((s) => s.item).filter((i) => !ALL_ITEMS.includes(i)),
+        [stock]
+    )
+
+    const isCustom   = form.item === CUSTOM_KEY
+    const activeItem = isCustom ? customItem.trim() : form.item
+    const unit       = ITEM_UNITS[activeItem] || ''
+
     const handleSubmit = async (e) => {
         e.preventDefault()
-        const ok = await addStock(form.item, form.quantity, form.note)
+        if (!activeItem) return
+        const ok = await addStock(activeItem, form.quantity, form.note)
         if (ok) {
-            setForm({ item: 'raw_sugarcane', quantity: '', note: '' })
+            setForm({ item: form.item, quantity: '', note: '' })
+            setCustomItem('')
             setDone(true)
         }
     }
 
-    const isValid = form.item && parseFloat(form.quantity) > 0
+    const isValid = activeItem && parseFloat(form.quantity) > 0
 
     return (
         <div className="max-w-lg mx-auto">
@@ -36,17 +52,51 @@ export default function AddStock() {
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                         <label className="label">Item *</label>
-                        <select id="stock-item" className="input" value={form.item} onChange={set('item')}>
+                        <select
+                            id="stock-item"
+                            className="input"
+                            value={form.item}
+                            onChange={(e) => { set('item')(e); setDone(false) }}
+                        >
+                            {/* Standard items */}
                             {ALL_ITEMS.map((item) => (
                                 <option key={item} value={item}>
                                     {ITEM_LABELS[item]} ({ITEM_UNITS[item]})
                                 </option>
                             ))}
+
+                            {/* Custom items already in stock */}
+                            {extraItems.length > 0 && (
+                                <optgroup label="Custom items">
+                                    {extraItems.map((item) => (
+                                        <option key={item} value={item}>{item}</option>
+                                    ))}
+                                </optgroup>
+                            )}
+
+                            {/* New custom item */}
+                            <optgroup label="Other">
+                                <option value={CUSTOM_KEY}>+ New custom item…</option>
+                            </optgroup>
                         </select>
                     </div>
 
+                    {/* Custom item name input */}
+                    {isCustom && (
+                        <div>
+                            <label className="label">Item Name *</label>
+                            <input
+                                className="input"
+                                placeholder="e.g. chemical1, fertilizer, bags"
+                                maxLength={40}
+                                value={customItem}
+                                onChange={(e) => { setCustomItem(e.target.value); setDone(false) }}
+                            />
+                        </div>
+                    )}
+
                     <div>
-                        <label className="label">Quantity * ({ITEM_UNITS[form.item]})</label>
+                        <label className="label">Quantity *{unit ? ` (${unit})` : ''}</label>
                         <input
                             id="stock-quantity"
                             type="number"
@@ -96,6 +146,7 @@ export default function AddStock() {
                     <li>• Every addition is recorded as an <code className="bg-blue-100 px-1 rounded">ADD</code> ledger entry</li>
                     <li>• Stock totals are recalculated automatically</li>
                     <li>• Notes are mandatory in ledger for full auditability</li>
+                    <li>• Custom items can be added and will appear in the stock table</li>
                 </ul>
             </div>
         </div>

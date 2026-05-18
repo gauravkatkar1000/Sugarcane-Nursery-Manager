@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { ArrowRightLeft, Archive, History, AlertCircle, Undo2 } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { ArrowRightLeft, Archive, History, AlertCircle, Undo2, Plus } from 'lucide-react'
 import useAppStore from '../store/useAppStore'
 import Modal from '../components/Modal'
 import { ITEM_LABELS, ITEM_UNITS, LOW_STOCK_THRESHOLDS } from '../utils/constants'
@@ -54,6 +55,9 @@ export default function Stock() {
         <div className="space-y-4">
             {/* Action buttons */}
             <div className="flex flex-wrap gap-3">
+                <Link to="/add-stock" className="btn-primary">
+                    <Plus className="w-4 h-4" /> Add Stock
+                </Link>
                 <button id="btn-convert-raw" className="btn-secondary" onClick={() => setConvertModal(true)}>
                     <ArrowRightLeft className="w-4 h-4" /> Convert Raw Sugarcane
                 </button>

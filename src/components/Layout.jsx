@@ -1,7 +1,7 @@
 import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import {
-    LayoutDashboard, ShoppingCart, Package, Plus,
+    LayoutDashboard, Package,
     ClipboardList, Menu, X, Sprout, HelpCircle, Users
 } from 'lucide-react'
 import useAppStore from '../store/useAppStore'
@@ -9,20 +9,18 @@ import useAppStore from '../store/useAppStore'
 const navItems = [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/orders', label: 'Orders', icon: ClipboardList },
-    { to: '/place-order', label: 'New Order', icon: ShoppingCart },
     { to: '/stock', label: 'Stock', icon: Package },
-    { to: '/add-stock', label: 'Add Stock', icon: Plus },
     { to: '/labour', label: 'Labour', icon: Users },
     { to: '/help', label: 'Help', icon: HelpCircle },
 ]
 
 // Primary 5 shown in the mobile bottom tab bar
 const bottomNavItems = [
-    { to: '/dashboard',   label: 'Home',    icon: LayoutDashboard },
-    { to: '/orders',      label: 'Orders',  icon: ClipboardList },
-    { to: '/place-order', label: 'New',     icon: ShoppingCart },
-    { to: '/stock',       label: 'Stock',   icon: Package },
-    { to: '/labour',      label: 'Labour',  icon: Users },
+    { to: '/dashboard', label: 'Home',   icon: LayoutDashboard },
+    { to: '/orders',    label: 'Orders', icon: ClipboardList },
+    { to: '/stock',     label: 'Stock',  icon: Package },
+    { to: '/labour',    label: 'Labour', icon: Users },
+    { to: '/help',      label: 'Help',   icon: HelpCircle },
 ]
 
 export default function Layout() {

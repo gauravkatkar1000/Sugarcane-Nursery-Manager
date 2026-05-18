@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
-import { Search, ChevronUp, ChevronDown } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Search, ChevronUp, ChevronDown, Plus } from 'lucide-react'
 import useAppStore from '../store/useAppStore'
 import StatusBadge from '../components/StatusBadge'
 import { ORDER_STATUSES } from '../utils/constants'
@@ -59,6 +60,14 @@ export default function Orders() {
 
     return (
         <div className="space-y-4">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <h2 className="font-semibold text-gray-900 text-lg">Orders</h2>
+                <Link to="/place-order" className="btn-primary">
+                    <Plus className="w-4 h-4" /> New Order
+                </Link>
+            </div>
+
             {/* Filters */}
             <div className="card p-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">

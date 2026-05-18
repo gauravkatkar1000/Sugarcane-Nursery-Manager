@@ -2,7 +2,7 @@ import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import {
     LayoutDashboard, ShoppingCart, Package, Plus,
-    ClipboardList, Menu, X, Sprout, HelpCircle
+    ClipboardList, Menu, X, Sprout, HelpCircle, Users
 } from 'lucide-react'
 import useAppStore from '../store/useAppStore'
 
@@ -12,6 +12,7 @@ const navItems = [
     { to: '/place-order', label: 'New Order', icon: ShoppingCart },
     { to: '/stock', label: 'Stock', icon: Package },
     { to: '/add-stock', label: 'Add Stock', icon: Plus },
+    { to: '/labour', label: 'Labour', icon: Users },
     { to: '/help', label: 'Help', icon: HelpCircle },
 ]
 
@@ -108,6 +109,7 @@ function PageTitle() {
         '/place-order': 'New Order',
         '/stock': 'Stock',
         '/add-stock': 'Add Stock',
+        '/labour': 'Labour',
         '/help': 'Help',
     }
     return <h1 className="font-semibold text-gray-900 text-base">{titles[pathname] || 'Nursery Manager'}</h1>

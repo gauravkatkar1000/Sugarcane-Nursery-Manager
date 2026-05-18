@@ -69,6 +69,21 @@ function doGet(e) {
     if (action === 'getCurrentStock') {
       return respond(sheetToObjects(getSheet('CurrentStock')));
     }
+    if (action === 'getWorkers') {
+      return respond(sheetToObjects(getSheet('Workers')));
+    }
+    if (action === 'getAttendance') {
+      const rows = sheetToObjects(getSheet('Attendance'));
+      const dateFrom = e.parameter.date_from;
+      const dateTo   = e.parameter.date_to;
+      if (dateFrom && dateTo) {
+        return respond(rows.filter(r => String(r.date) >= dateFrom && String(r.date) <= dateTo));
+      }
+      if (dateFrom) {
+        return respond(rows.filter(r => String(r.date) === dateFrom));
+      }
+      return respond(rows);
+    }
 
     return respondError('Unknown GET action: ' + action);
   } catch (err) {
@@ -87,6 +102,9 @@ function doPost(e) {
     if (action === 'createOrder')         return createOrder(payload.data);
     if (action === 'updateOrder')         return updateOrder(payload.id, payload.fields);
     if (action === 'addLedgerEntries')    return addLedgerEntries(payload.entries);
+    if (action === 'addWorker')           return addWorker(payload.data);
+    if (action === 'updateWorker')        return updateWorker(payload.id, payload.fields);
+    if (action === 'saveAttendance')      return saveAttendance(payload.date, payload.records);
 
     return respondError('Unknown POST action: ' + action);
   } catch (err) {
@@ -262,4 +280,83 @@ function recalcFromLedger(ledger) {
   });
 
   return map;
+}
+
+// ══════════════════════════════════════════════════
+// addWorker
+// ══════════════════════════════════════════════════
+function addWorker(data) {
+  const lock = LockService.getScriptLock();
+  lock.tryLock(5000);
+  try {
+    const sheet = getSheet('Workers');
+    const worker = {
+      id:         Utilities.getUuid(),
+      name:       data.name,
+      daily_rate: Number(data.daily_rate) || 0,
+      phone:      data.phone || '',
+      active:     true,
+      created_at: new Date().toISOString(),
+    };
+    sheet.appendRow(objectToRow(sheet, worker));
+    return respond(worker);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// ══════════════════════════════════════════════════
+// updateWorker (used for deactivation)
+// ══════════════════════════════════════════════════
+function updateWorker(id, fields) {
+  const lock = LockService.getScriptLock();
+  lock.tryLock(5000);
+  try {
+    const sheet = getSheet('Workers');
+    const rowIdx = findRowById(sheet, id);
+    if (rowIdx === -1) return respondError('Worker not found: ' + id);
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const rowData = sheet.getRange(rowIdx, 1, 1, headers.length).getValues()[0];
+    const current = {};
+    headers.forEach((h, i) => { current[h] = rowData[i]; });
+    headers.forEach((h, i) => {
+      if (fields[h] !== undefined) sheet.getRange(rowIdx, i + 1).setValue(fields[h]);
+    });
+    return respond({ ...current, ...fields });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// ══════════════════════════════════════════════════
+// saveAttendance — replaces all records for the date
+// ══════════════════════════════════════════════════
+function saveAttendance(date, records) {
+  const lock = LockService.getScriptLock();
+  lock.tryLock(5000);
+  try {
+    const sheet = getSheet('Attendance');
+    if (sheet.getLastRow() > 1) {
+      const all = sheet.getDataRange().getValues();
+      const dateIdx = all[0].indexOf('date');
+      // Delete existing rows for this date (bottom-up to preserve indices)
+      for (let i = all.length - 1; i >= 1; i--) {
+        if (String(all[i][dateIdx]) === String(date)) sheet.deleteRow(i + 1);
+      }
+    }
+    const created_at = new Date().toISOString();
+    records.forEach(r => {
+      const row = {
+        id:         Utilities.getUuid(),
+        worker_id:  r.worker_id,
+        date:       date,
+        present:    r.present === true || r.present === 'true',
+        created_at,
+      };
+      sheet.appendRow(objectToRow(sheet, row));
+    });
+    return respond(records);
+  } finally {
+    lock.releaseLock();
+  }
 }

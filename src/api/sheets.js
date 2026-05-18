@@ -60,3 +60,18 @@ export const addLedgerEntries = (entries) =>
 
 // ── Stock ─────────────────────────────────────────────────
 export const getCurrentStock = () => get('getCurrentStock');
+
+// ── Labour ────────────────────────────────────────────────
+export const getWorkers = () => get('getWorkers');
+
+export const getAttendance = (dateFrom, dateTo) =>
+    get('getAttendance', dateFrom ? { date_from: dateFrom, ...(dateTo ? { date_to: dateTo } : {}) } : {});
+
+export const addWorker = (data) =>
+    post({ action: 'addWorker', data });
+
+export const updateWorker = (id, fields) =>
+    post({ action: 'updateWorker', id, fields });
+
+export const saveAttendance = (date, records) =>
+    post({ action: 'saveAttendance', date, records });

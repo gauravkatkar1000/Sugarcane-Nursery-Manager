@@ -6,6 +6,7 @@ import Orders from './pages/Orders'
 import Stock from './pages/Stock'
 import AddStock from './pages/AddStock'
 import Help from './pages/Help'
+import Labour from './pages/Labour'
 
 export default function App() {
   return (
@@ -19,6 +20,7 @@ export default function App() {
           <Route path="stock" element={<Stock />} />
           <Route path="add-stock" element={<AddStock />} />
           <Route path="help" element={<Help />} />
+          <Route path="labour" element={<Labour />} />
         </Route>
       </Routes>
     </BrowserRouter>

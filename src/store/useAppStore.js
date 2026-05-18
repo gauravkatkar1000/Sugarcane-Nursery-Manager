@@ -16,6 +16,8 @@ const useAppStore = create((set, get) => ({
     orders: [],
     stock: [],
     ledger: [],
+    workers: [],
+    attendance: [],
     loading: {},
     error: null,
 
@@ -247,6 +249,82 @@ const useAppStore = create((set, get) => ({
             return false;
         } finally {
             get().setLoading('prepareTrays', false);
+        }
+    },
+
+    // ── labour: fetch workers ────────────────────────────────
+    fetchWorkers: async () => {
+        get().setLoading('workers', true);
+        try {
+            const workers = await api.getWorkers();
+            set({ workers });
+        } catch (e) {
+            toast.error('Failed to load workers: ' + e.message);
+        } finally {
+            get().setLoading('workers', false);
+        }
+    },
+
+    // ── labour: fetch attendance ─────────────────────────────
+    fetchAttendance: async (dateFrom, dateTo) => {
+        get().setLoading('attendance', true);
+        try {
+            const attendance = await api.getAttendance(dateFrom, dateTo);
+            set({ attendance });
+            return attendance;
+        } catch (e) {
+            toast.error('Failed to load attendance: ' + e.message);
+            return [];
+        } finally {
+            get().setLoading('attendance', false);
+        }
+    },
+
+    // ── labour: add worker ───────────────────────────────────
+    addWorker: async (data) => {
+        get().setLoading('addWorker', true);
+        try {
+            const worker = await api.addWorker(data);
+            set((s) => ({ workers: [...s.workers, worker] }));
+            toast.success('Worker added!');
+            return true;
+        } catch (e) {
+            toast.error('Failed to add worker: ' + e.message);
+            return false;
+        } finally {
+            get().setLoading('addWorker', false);
+        }
+    },
+
+    // ── labour: deactivate worker ────────────────────────────
+    deactivateWorker: async (id) => {
+        get().setLoading(`deactivate_${id}`, true);
+        try {
+            await api.updateWorker(id, { active: false });
+            set((s) => ({ workers: s.workers.map((w) => w.id === id ? { ...w, active: false } : w) }));
+            toast.success('Worker deactivated.');
+            return true;
+        } catch (e) {
+            toast.error('Failed to deactivate worker: ' + e.message);
+            return false;
+        } finally {
+            get().setLoading(`deactivate_${id}`, false);
+        }
+    },
+
+    // ── labour: save attendance ──────────────────────────────
+    saveAttendance: async (date, records) => {
+        get().setLoading('saveAttendance', true);
+        try {
+            await api.saveAttendance(date, records);
+            set({ attendance: records.map((r) => ({ ...r, date })) });
+            toast.success('Attendance saved!');
+            return true;
+        } catch (e) {
+            toast.error('Failed to save attendance: ' + e.message);
+            return false;
+        } finally {
+            get().setLoading('saveAttendance', false);
         }
     },
 

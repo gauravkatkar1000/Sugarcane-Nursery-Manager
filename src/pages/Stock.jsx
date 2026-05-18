@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRightLeft, Archive, History, AlertCircle, Undo2, Plus } from 'lucide-react'
+import { ArrowRightLeft, Archive, History, AlertCircle, Undo2, Plus, Package } from 'lucide-react'
 import useAppStore from '../store/useAppStore'
 import Modal from '../components/Modal'
 import { ITEM_LABELS, ITEM_UNITS, LOW_STOCK_THRESHOLDS } from '../utils/constants'
@@ -53,11 +53,24 @@ export default function Stock() {
 
     return (
         <div className="space-y-4">
+            {/* Header */}
+            <div className="card p-4 bg-gradient-to-r from-brand-600 to-brand-500 text-white">
+                <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <Package className="w-7 h-7 opacity-80" />
+                        <div>
+                            <h2 className="font-semibold text-lg">Stock</h2>
+                            <p className="text-brand-100 text-sm">{stock.length} item{stock.length !== 1 ? 's' : ''} tracked</p>
+                        </div>
+                    </div>
+                    <Link to="/add-stock" className="bg-white/20 hover:bg-white/30 text-white rounded-xl px-4 py-2 text-sm font-semibold flex items-center gap-1.5 transition-colors shrink-0">
+                        <Plus className="w-4 h-4" /> Add Stock
+                    </Link>
+                </div>
+            </div>
+
             {/* Action buttons */}
             <div className="flex flex-wrap gap-3">
-                <Link to="/add-stock" className="btn-primary">
-                    <Plus className="w-4 h-4" /> Add Stock
-                </Link>
                 <button id="btn-convert-raw" className="btn-secondary" onClick={() => setConvertModal(true)}>
                     <ArrowRightLeft className="w-4 h-4" /> Convert Raw Sugarcane
                 </button>

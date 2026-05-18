@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { Search, ChevronUp, ChevronDown, Plus } from 'lucide-react'
+import { Search, ChevronUp, ChevronDown, Plus, ClipboardList } from 'lucide-react'
 import useAppStore from '../store/useAppStore'
 import StatusBadge from '../components/StatusBadge'
 import { ORDER_STATUSES } from '../utils/constants'
@@ -61,11 +61,19 @@ export default function Orders() {
     return (
         <div className="space-y-4">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <h2 className="font-semibold text-gray-900 text-lg">Orders</h2>
-                <Link to="/place-order" className="btn-primary">
-                    <Plus className="w-4 h-4" /> New Order
-                </Link>
+            <div className="card p-4 bg-gradient-to-r from-brand-600 to-brand-500 text-white">
+                <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <ClipboardList className="w-7 h-7 opacity-80" />
+                        <div>
+                            <h2 className="font-semibold text-lg">Orders</h2>
+                            <p className="text-brand-100 text-sm">{orders.length} total order{orders.length !== 1 ? 's' : ''}</p>
+                        </div>
+                    </div>
+                    <Link to="/place-order" className="bg-white/20 hover:bg-white/30 text-white rounded-xl px-4 py-2 text-sm font-semibold flex items-center gap-1.5 transition-colors shrink-0">
+                        <Plus className="w-4 h-4" /> New Order
+                    </Link>
+                </div>
             </div>
 
             {/* Filters */}

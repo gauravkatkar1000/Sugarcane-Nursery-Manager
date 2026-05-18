@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { PlusCircle } from 'lucide-react'
+import { PlusCircle, Package } from 'lucide-react'
 import useAppStore from '../store/useAppStore'
 import { ALL_ITEMS, ITEM_LABELS, ITEM_UNITS } from '../utils/constants'
 import LoadingSpinner from '../components/LoadingSpinner'
@@ -44,10 +44,19 @@ export default function AddStock() {
     const isValid = activeItem && parseFloat(form.quantity) > 0
 
     return (
-        <div className="max-w-lg mx-auto">
+        <div className="max-w-lg mx-auto space-y-4">
+            {/* Header */}
+            <div className="card p-4 bg-gradient-to-r from-brand-600 to-brand-500 text-white">
+                <div className="flex items-center gap-3">
+                    <Package className="w-7 h-7 opacity-80" />
+                    <div>
+                        <h2 className="font-semibold text-lg">Add Stock</h2>
+                        <p className="text-brand-100 text-sm">Record a new stock entry to the ledger</p>
+                    </div>
+                </div>
+            </div>
+
             <div className="card p-6 space-y-5">
-                <h2 className="font-semibold text-gray-900 text-lg">Add Stock Entry</h2>
-                <p className="text-sm text-gray-500 -mt-3">All stock is tracked via ledger. Select item, quantity and a note.</p>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
@@ -140,7 +149,7 @@ export default function AddStock() {
             </div>
 
             {/* Info card */}
-            <div className="mt-4 card p-4 bg-blue-50 border-blue-100">
+            <div className="card p-4 bg-blue-50 border-blue-100">
                 <p className="text-xs text-blue-700 font-semibold mb-2">📋 How this works</p>
                 <ul className="text-xs text-blue-600 space-y-1">
                     <li>• Every addition is recorded as an <code className="bg-blue-100 px-1 rounded">ADD</code> ledger entry</li>

@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Calculator, CheckCircle, AlertCircle, XCircle, Zap } from 'lucide-react'
+import { Calculator, CheckCircle, AlertCircle, XCircle, Zap, ShoppingCart } from 'lucide-react'
 import useAppStore from '../store/useAppStore'
 import { calcOrder } from '../utils/calculations'
 import { checkStockAvailability } from '../utils/calculations'
@@ -47,9 +47,19 @@ export default function PlaceOrder() {
 
     return (
         <div className="max-w-2xl mx-auto space-y-6">
+            {/* Header */}
+            <div className="card p-4 bg-gradient-to-r from-brand-600 to-brand-500 text-white">
+                <div className="flex items-center gap-3">
+                    <ShoppingCart className="w-7 h-7 opacity-80" />
+                    <div>
+                        <h2 className="font-semibold text-lg">New Order</h2>
+                        <p className="text-brand-100 text-sm">Fill in details to place a new order</p>
+                    </div>
+                </div>
+            </div>
+
             {/* Form */}
             <div className="card p-6 space-y-5">
-                <h2 className="font-semibold text-gray-900 text-lg">Order Details</h2>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>

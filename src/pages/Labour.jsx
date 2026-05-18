@@ -252,7 +252,9 @@ export default function Labour() {
                         <p className="text-sm text-gray-400 text-center py-12">No workers yet. Add your first worker.</p>
                     ) : (
                         <div className="divide-y divide-gray-50">
-                            {workers.map((w) => {
+                            {(() => {
+                                const anyWorkerBusy = workers.some((w) => loading[`deactivate_${w.id}`] || loading[`activate_${w.id}`])
+                                return workers.map((w) => {
                                 const active = isActive(w)
                                 return (
                                     <div key={w.id} className="flex items-center justify-between p-4 gap-3">
@@ -268,20 +270,21 @@ export default function Labour() {
                                         </div>
                                         {active ? (
                                             <button onClick={() => setDeactivateTarget(w)}
-                                                disabled={loading[`deactivate_${w.id}`]}
-                                                className="text-sm bg-gray-100 text-gray-500 hover:bg-red-50 hover:text-red-600 px-4 py-2.5 rounded-lg font-semibold transition-colors shrink-0 min-h-[44px]">
+                                                disabled={anyWorkerBusy}
+                                                className="text-sm bg-gray-100 text-gray-500 hover:bg-red-50 hover:text-red-600 px-4 py-2.5 rounded-lg font-semibold transition-colors shrink-0 min-h-[44px] disabled:opacity-50">
                                                 {loading[`deactivate_${w.id}`] ? '...' : 'Deactivate'}
                                             </button>
                                         ) : (
                                             <button onClick={() => activateWorker(w.id)}
-                                                disabled={loading[`activate_${w.id}`]}
-                                                className="text-sm bg-green-50 text-green-700 hover:bg-green-100 px-4 py-2.5 rounded-lg font-semibold transition-colors shrink-0 min-h-[44px]">
+                                                disabled={anyWorkerBusy}
+                                                className="text-sm bg-green-50 text-green-700 hover:bg-green-100 px-4 py-2.5 rounded-lg font-semibold transition-colors shrink-0 min-h-[44px] disabled:opacity-50">
                                                 {loading[`activate_${w.id}`] ? '...' : 'Activate'}
                                             </button>
                                         )}
                                     </div>
                                 )
-                            })}
+                                })
+                            })()}
                         </div>
                     )}
                 </div>
@@ -376,7 +379,7 @@ export default function Labour() {
                     They won't appear in attendance. Past records are kept.
                 </p>
                 <div className="flex gap-3">
-                    <button className="flex-1 btn-ghost" onClick={() => setDeactivateTarget(null)}>Cancel</button>
+                    <button className="flex-1 btn-ghost disabled:opacity-50" disabled={loading[`deactivate_${deactivateTarget?.id}`]} onClick={() => setDeactivateTarget(null)}>Cancel</button>
                     <button className="flex-1 bg-red-600 text-white rounded-xl py-2 text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-50"
                         disabled={loading[`deactivate_${deactivateTarget?.id}`]} onClick={handleDeactivate}>
                         {loading[`deactivate_${deactivateTarget?.id}`] ? '...' : 'Deactivate'}

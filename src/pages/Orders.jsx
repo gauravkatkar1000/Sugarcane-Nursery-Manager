@@ -114,6 +114,7 @@ export default function Orders() {
                         const amount = o.rate && o.seedlings_required
                             ? parseFloat(o.rate) * parseFloat(o.seedlings_required)
                             : null
+                        const anyBusy = !!(loading[`confirm_${o.id}`] || loading[`prepare_${o.id}`] || loading[`deliver_${o.id}`] || loading[`cancel_${o.id}`])
                         return (
                         <div key={o.id} className="bg-white border rounded-xl p-4 shadow-sm space-y-3">
                             <div className="flex items-center justify-between">
@@ -143,16 +144,16 @@ export default function Orders() {
                             <div className="border-t border-gray-100 pt-3">
                                 <div className="grid grid-cols-2 gap-2">
                                     {o.status === 'PENDING' && (
-                                        <ActionBtn fullWidth id={`m-confirm-${o.id}`} label="Confirm" color="blue" loading={loading[`confirm_${o.id}`]} onClick={() => confirmOrder(o.id)} />
+                                        <ActionBtn fullWidth id={`m-confirm-${o.id}`} label="Confirm" color="blue" loading={loading[`confirm_${o.id}`]} disabled={anyBusy} onClick={() => confirmOrder(o.id)} />
                                     )}
                                     {o.status === 'CONFIRMED' && (
-                                        <ActionBtn fullWidth id={`m-prepare-${o.id}`} label="Prepare" color="purple" loading={loading[`prepare_${o.id}`]} onClick={() => prepareOrder(o.id)} />
+                                        <ActionBtn fullWidth id={`m-prepare-${o.id}`} label="Prepare" color="purple" loading={loading[`prepare_${o.id}`]} disabled={anyBusy} onClick={() => prepareOrder(o.id)} />
                                     )}
                                     {o.status === 'PREPARED' && (
-                                        <ActionBtn fullWidth id={`m-deliver-${o.id}`} label="Deliver" color="green" loading={loading[`deliver_${o.id}`]} onClick={() => deliverOrder(o.id)} />
+                                        <ActionBtn fullWidth id={`m-deliver-${o.id}`} label="Deliver" color="green" loading={loading[`deliver_${o.id}`]} disabled={anyBusy} onClick={() => deliverOrder(o.id)} />
                                     )}
                                     {['PENDING', 'CONFIRMED', 'PREPARED'].includes(o.status) && (
-                                        <ActionBtn fullWidth id={`m-cancel-${o.id}`} label="Cancel" color="red" loading={loading[`cancel_${o.id}`]} onClick={() => cancelOrder(o.id)} />
+                                        <ActionBtn fullWidth id={`m-cancel-${o.id}`} label="Cancel" color="red" loading={loading[`cancel_${o.id}`]} disabled={anyBusy} onClick={() => cancelOrder(o.id)} />
                                     )}
                                 </div>
                             </div>
@@ -241,6 +242,7 @@ export default function Orders() {
 
 function OrderRow({ order, loading, onConfirm, onPrepare, onDeliver, onCancel }) {
     const busy = (key) => !!loading[`${key}_${order.id}`]
+    const anyBusy = busy('confirm') || busy('prepare') || busy('deliver') || busy('cancel')
 
     const amount = order.rate && order.seedlings_required
         ? parseFloat(order.rate) * parseFloat(order.seedlings_required)
@@ -259,16 +261,16 @@ function OrderRow({ order, loading, onConfirm, onPrepare, onDeliver, onCancel })
             <td className="table-td">
                 <div className="flex items-center gap-1 flex-wrap">
                     {order.status === 'PENDING' && (
-                        <ActionBtn id={`confirm-${order.id}`} label="Confirm" color="blue" loading={busy('confirm')} onClick={onConfirm} />
+                        <ActionBtn id={`confirm-${order.id}`} label="Confirm" color="blue" loading={busy('confirm')} disabled={anyBusy} onClick={onConfirm} />
                     )}
                     {order.status === 'CONFIRMED' && (
-                        <ActionBtn id={`prepare-${order.id}`} label="Prepare" color="purple" loading={busy('prepare')} onClick={onPrepare} />
+                        <ActionBtn id={`prepare-${order.id}`} label="Prepare" color="purple" loading={busy('prepare')} disabled={anyBusy} onClick={onPrepare} />
                     )}
                     {order.status === 'PREPARED' && (
-                        <ActionBtn id={`deliver-${order.id}`} label="Deliver" color="green" loading={busy('deliver')} onClick={onDeliver} />
+                        <ActionBtn id={`deliver-${order.id}`} label="Deliver" color="green" loading={busy('deliver')} disabled={anyBusy} onClick={onDeliver} />
                     )}
                     {['PENDING', 'CONFIRMED', 'PREPARED'].includes(order.status) && (
-                        <ActionBtn id={`cancel-${order.id}`} label="Cancel" color="red" loading={busy('cancel')} onClick={onCancel} />
+                        <ActionBtn id={`cancel-${order.id}`} label="Cancel" color="red" loading={busy('cancel')} disabled={anyBusy} onClick={onCancel} />
                     )}
                 </div>
             </td>
@@ -276,7 +278,7 @@ function OrderRow({ order, loading, onConfirm, onPrepare, onDeliver, onCancel })
     )
 }
 
-function ActionBtn({ id, label, color, loading, onClick, fullWidth }) {
+function ActionBtn({ id, label, color, loading, disabled, onClick, fullWidth }) {
     const colors = {
         blue: 'bg-blue-100 text-blue-700 hover:bg-blue-200',
         purple: 'bg-purple-100 text-purple-700 hover:bg-purple-200',
@@ -288,7 +290,7 @@ function ActionBtn({ id, label, color, loading, onClick, fullWidth }) {
         <button
             id={id}
             onClick={onClick}
-            disabled={loading}
+            disabled={disabled}
             className={`${widthClass} rounded-lg font-semibold transition-colors disabled:opacity-50 ${colors[color]}`}
         >
             {loading

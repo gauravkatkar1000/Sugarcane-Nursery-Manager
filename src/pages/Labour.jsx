@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Users, CalendarDays, BarChart2, UserPlus, CheckCircle } from 'lucide-react'
+import { Users, CalendarDays, BarChart2, UserPlus, CheckCircle, Calendar } from 'lucide-react'
 import useAppStore from '../store/useAppStore'
 import Modal from '../components/Modal'
 
@@ -16,17 +16,41 @@ function monthRange(monthStr) {
     return { first: `${monthStr}-01`, last: new Date(y, m, 0).toISOString().slice(0, 10) }
 }
 
-const isDateKey  = (k) => /^\d{4}-\d{2}-\d{2}$/.test(k)
-const isActive   = (w) => w.active === true || w.active === 'TRUE' || w.active === 1
-const isPresent  = (v) => v === true || v === 'TRUE' || v === 1
+function buildCalendarDays(monthStr, worker) {
+    const [y, m]     = monthStr.split('-').map(Number)
+    const firstDow   = new Date(y, m - 1, 1).getDay() // 0=Sun
+    const daysInMonth = new Date(y, m, 0).getDate()
+    const today      = todayStr()
+    const cells      = []
+    for (let i = 0; i < firstDow; i++) cells.push(null)
+    for (let d = 1; d <= daysInMonth; d++) {
+        const date = `${monthStr}-${String(d).padStart(2, '0')}`
+        const val  = worker[date]
+        cells.push({
+            day:      d,
+            date,
+            present:  val === true || val === 'TRUE' || val === 1,
+            recorded: val !== undefined && val !== '',
+            future:   date > today,
+        })
+    }
+    return cells
+}
+
+const isDateKey = (k) => /^\d{4}-\d{2}-\d{2}$/.test(k)
+const isActive  = (w) => w.active === true || w.active === 'TRUE' || w.active === 1
+const isPresent = (v) => v === true || v === 'TRUE' || v === 1
+
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
 
 export default function Labour() {
-    const workers        = useAppStore((s) => s.workers)
-    const loading        = useAppStore((s) => s.loading)
-    const fetchWorkers   = useAppStore((s) => s.fetchWorkers)
-    const saveAttendance = useAppStore((s) => s.saveAttendance)
-    const addWorkerFn    = useAppStore((s) => s.addWorker)
+    const workers          = useAppStore((s) => s.workers)
+    const loading          = useAppStore((s) => s.loading)
+    const fetchWorkers     = useAppStore((s) => s.fetchWorkers)
+    const saveAttendance   = useAppStore((s) => s.saveAttendance)
+    const addWorkerFn      = useAppStore((s) => s.addWorker)
     const deactivateWorker = useAppStore((s) => s.deactivateWorker)
+    const activateWorker   = useAppStore((s) => s.activateWorker)
 
     const [tab, setTab] = useState('attendance')
 
@@ -36,18 +60,18 @@ export default function Labour() {
     const [saved, setSaved]     = useState(false)
 
     // Workers tab
-    const [addModal, setAddModal]               = useState(false)
+    const [addModal, setAddModal]                 = useState(false)
     const [deactivateTarget, setDeactivateTarget] = useState(null)
-    const [workerForm, setWorkerForm]           = useState({ name: '', daily_rate: '', phone: '' })
+    const [workerForm, setWorkerForm]             = useState({ name: '', daily_rate: '', phone: '' })
 
     // Summary tab
-    const [month, setMonth] = useState(currentMonthStr())
+    const [month, setMonth]           = useState(currentMonthStr())
+    const [calendarTarget, setCalendarTarget] = useState(null) // { worker }
 
     const activeWorkers = useMemo(() => workers.filter(isActive), [workers])
 
     useEffect(() => { fetchWorkers() }, [])
 
-    // Pre-populate present toggles from workers data whenever date or workers changes
     useEffect(() => {
         const map = {}
         activeWorkers.forEach((w) => { map[w.id] = isPresent(w[date]) })
@@ -61,14 +85,13 @@ export default function Labour() {
         [present, activeWorkers]
     )
 
-    // Summary — computed directly from workers, no extra fetch needed
     const wageSummary = useMemo(() => {
         const { first, last } = monthRange(month)
         return activeWorkers.map((w) => {
             const days = Object.keys(w)
                 .filter((k) => isDateKey(k) && k >= first && k <= last && isPresent(w[k]))
                 .length
-            return { id: w.id, name: w.name, daily_rate: Number(w.daily_rate) || 0, days, total: days * (Number(w.daily_rate) || 0) }
+            return { worker: w, id: w.id, name: w.name, daily_rate: Number(w.daily_rate) || 0, days, total: days * (Number(w.daily_rate) || 0) }
         })
     }, [activeWorkers, month])
 
@@ -92,6 +115,13 @@ export default function Labour() {
         if (ok) setDeactivateTarget(null)
     }
 
+    // Calendar modal data
+    const calendarDays = useMemo(
+        () => calendarTarget ? buildCalendarDays(month, calendarTarget.worker) : [],
+        [calendarTarget, month]
+    )
+    const [calY, calM] = month.split('-').map(Number)
+
     return (
         <div className="space-y-4">
             {/* Header */}
@@ -113,10 +143,10 @@ export default function Labour() {
                     { key: 'summary',    label: 'Summary',    icon: BarChart2 },
                 ].map(({ key, label, icon: Icon }) => (
                     <button key={key} onClick={() => setTab(key)}
-                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-sm font-semibold transition-colors ${
+                        className={`flex-1 flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 py-2.5 px-1 rounded-lg text-[10px] sm:text-sm font-semibold transition-colors min-h-[48px] ${
                             tab === key ? 'bg-brand-600 text-white' : 'text-gray-500 hover:bg-gray-100'
                         }`}>
-                        <Icon className="w-3.5 h-3.5" />{label}
+                        <Icon className="w-4 h-4" />{label}
                     </button>
                 ))}
             </div>
@@ -164,13 +194,13 @@ export default function Labour() {
                                     </div>
                                     <div className="flex gap-2 shrink-0">
                                         <button onClick={() => setPresent((p) => ({ ...p, [w.id]: true }))}
-                                            className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+                                            className={`px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors min-w-[80px] ${
                                                 present[w.id]
                                                     ? 'bg-green-600 text-white shadow-sm'
                                                     : 'bg-gray-100 text-gray-400 hover:bg-green-50 hover:text-green-600'
                                             }`}>Present</button>
                                         <button onClick={() => setPresent((p) => ({ ...p, [w.id]: false }))}
-                                            className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+                                            className={`px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors min-w-[80px] ${
                                                 present[w.id] === false
                                                     ? 'bg-red-100 text-red-600'
                                                     : 'bg-gray-100 text-gray-400 hover:bg-red-50 hover:text-red-500'
@@ -236,11 +266,17 @@ export default function Labour() {
                                                 {w.phone ? ` · ${w.phone}` : ''}
                                             </p>
                                         </div>
-                                        {active && (
+                                        {active ? (
                                             <button onClick={() => setDeactivateTarget(w)}
                                                 disabled={loading[`deactivate_${w.id}`]}
-                                                className="text-xs bg-gray-100 text-gray-500 hover:bg-red-50 hover:text-red-600 px-3 py-1.5 rounded-lg font-semibold transition-colors shrink-0">
+                                                className="text-sm bg-gray-100 text-gray-500 hover:bg-red-50 hover:text-red-600 px-4 py-2.5 rounded-lg font-semibold transition-colors shrink-0 min-h-[44px]">
                                                 {loading[`deactivate_${w.id}`] ? '...' : 'Deactivate'}
+                                            </button>
+                                        ) : (
+                                            <button onClick={() => activateWorker(w.id)}
+                                                disabled={loading[`activate_${w.id}`]}
+                                                className="text-sm bg-green-50 text-green-700 hover:bg-green-100 px-4 py-2.5 rounded-lg font-semibold transition-colors shrink-0 min-h-[44px]">
+                                                {loading[`activate_${w.id}`] ? '...' : 'Activate'}
                                             </button>
                                         )}
                                     </div>
@@ -260,24 +296,33 @@ export default function Labour() {
                             onChange={(e) => setMonth(e.target.value)} />
                     </div>
                     <div className="overflow-x-auto">
-                        <table className="w-full min-w-[380px]">
+                        <table className="w-full min-w-[320px]">
                             <thead>
                                 <tr>
-                                    {['Worker', 'Days Present', 'Daily Rate', 'Total Earned'].map((h) => (
-                                        <th key={h} className="table-th first:pl-4 last:pr-4">{h}</th>
+                                    {['Worker', 'Days', 'Rate', 'Total', ''].map((h, i) => (
+                                        <th key={i} className="table-th first:pl-4">{h}</th>
                                     ))}
                                 </tr>
                             </thead>
                             <tbody>
                                 {wageSummary.length === 0 ? (
-                                    <tr><td colSpan={4} className="py-12 text-center text-sm text-gray-400">No workers yet.</td></tr>
+                                    <tr><td colSpan={5} className="py-12 text-center text-sm text-gray-400">No workers yet.</td></tr>
                                 ) : (
                                     wageSummary.map((r) => (
                                         <tr key={r.id} className="hover:bg-gray-50 transition-colors">
                                             <td className="table-td pl-4 font-medium text-gray-900">{r.name}</td>
                                             <td className="table-td">{r.days}</td>
                                             <td className="table-td text-gray-500">₹{r.daily_rate.toLocaleString('en-IN')}</td>
-                                            <td className="table-td pr-4 font-semibold text-green-700">₹{r.total.toLocaleString('en-IN')}</td>
+                                            <td className="table-td font-semibold text-green-700">₹{r.total.toLocaleString('en-IN')}</td>
+                                            <td className="table-td pr-4">
+                                                <button
+                                                    onClick={() => setCalendarTarget({ worker: r.worker })}
+                                                    className="p-1.5 rounded-lg hover:bg-brand-50 text-gray-400 hover:text-brand-600 transition-colors"
+                                                    title="View attendance"
+                                                >
+                                                    <Calendar className="w-4 h-4" />
+                                                </button>
+                                            </td>
                                         </tr>
                                     ))
                                 )}
@@ -286,7 +331,8 @@ export default function Labour() {
                                 <tfoot>
                                     <tr className="border-t-2 border-gray-100 bg-gray-50">
                                         <td colSpan={3} className="table-td pl-4 font-bold text-gray-900">Grand Total</td>
-                                        <td className="table-td pr-4 font-bold text-green-700 text-lg">₹{grandTotal.toLocaleString('en-IN')}</td>
+                                        <td className="table-td font-bold text-green-700 text-lg">₹{grandTotal.toLocaleString('en-IN')}</td>
+                                        <td className="table-td pr-4" />
                                     </tr>
                                 </tfoot>
                             )}
@@ -295,7 +341,7 @@ export default function Labour() {
                 </div>
             )}
 
-            {/* Add Worker Modal */}
+            {/* ── Add Worker Modal ─────────────────────────────── */}
             <Modal open={addModal} onClose={() => { setAddModal(false); setWorkerForm({ name: '', daily_rate: '', phone: '' }) }}
                 title="Add Worker" maxWidth="max-w-sm">
                 <form onSubmit={handleAddWorker} className="space-y-4">
@@ -323,7 +369,7 @@ export default function Labour() {
                 </form>
             </Modal>
 
-            {/* Deactivate confirm Modal */}
+            {/* ── Deactivate Modal ─────────────────────────────── */}
             <Modal open={!!deactivateTarget} onClose={() => setDeactivateTarget(null)} title="Deactivate Worker" maxWidth="max-w-sm">
                 <p className="text-sm text-gray-600 mb-6">
                     Deactivate <span className="font-semibold text-gray-900">{deactivateTarget?.name}</span>?
@@ -336,6 +382,49 @@ export default function Labour() {
                         {loading[`deactivate_${deactivateTarget?.id}`] ? '...' : 'Deactivate'}
                     </button>
                 </div>
+            </Modal>
+
+            {/* ── Attendance Calendar Modal ────────────────────── */}
+            <Modal open={!!calendarTarget} onClose={() => setCalendarTarget(null)}
+                title={calendarTarget ? `${calendarTarget.worker.name} — ${MONTH_NAMES[calM - 1]} ${calY}` : ''}
+                maxWidth="max-w-sm">
+                {calendarTarget && (
+                    <div className="space-y-3">
+                        {/* Legend */}
+                        <div className="flex gap-4 text-xs text-gray-500">
+                            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-green-500 inline-block" />Present</span>
+                            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-red-200 inline-block" />Absent</span>
+                            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-gray-100 inline-block" />Not recorded</span>
+                        </div>
+
+                        {/* Day-of-week headers */}
+                        <div className="grid grid-cols-7 gap-1 text-center">
+                            {['Su','Mo','Tu','We','Th','Fr','Sa'].map((d) => (
+                                <div key={d} className="text-[10px] font-bold text-gray-400 py-1">{d}</div>
+                            ))}
+                            {calendarDays.map((cell, i) => {
+                                if (!cell) return <div key={`pad-${i}`} />
+                                const base = 'w-full aspect-square flex items-center justify-center rounded-full text-xs font-semibold'
+                                let cls
+                                if (cell.future)        cls = `${base} text-gray-300`
+                                else if (cell.present)  cls = `${base} bg-green-500 text-white`
+                                else if (cell.recorded) cls = `${base} bg-red-100 text-red-500`
+                                else                    cls = `${base} bg-gray-50 text-gray-400`
+                                return <div key={cell.date} className={cls}>{cell.day}</div>
+                            })}
+                        </div>
+
+                        {/* Summary line */}
+                        <div className="pt-2 border-t border-gray-50 flex justify-between text-sm">
+                            <span className="text-gray-500">
+                                {wageSummary.find((r) => r.id === calendarTarget.worker.id)?.days ?? 0} days present
+                            </span>
+                            <span className="font-semibold text-green-700">
+                                ₹{(wageSummary.find((r) => r.id === calendarTarget.worker.id)?.total ?? 0).toLocaleString('en-IN')} earned
+                            </span>
+                        </div>
+                    </div>
+                )}
             </Modal>
         </div>
     )

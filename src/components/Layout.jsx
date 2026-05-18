@@ -16,6 +16,15 @@ const navItems = [
     { to: '/help', label: 'Help', icon: HelpCircle },
 ]
 
+// Primary 5 shown in the mobile bottom tab bar
+const bottomNavItems = [
+    { to: '/dashboard',   label: 'Home',    icon: LayoutDashboard },
+    { to: '/orders',      label: 'Orders',  icon: ClipboardList },
+    { to: '/place-order', label: 'New',     icon: ShoppingCart },
+    { to: '/stock',       label: 'Stock',   icon: Package },
+    { to: '/labour',      label: 'Labour',  icon: Users },
+]
+
 export default function Layout() {
     const [sidebarOpen, setSidebarOpen] = useState(false)
     const fetchAll = useAppStore((s) => s.fetchAll)
@@ -93,10 +102,34 @@ export default function Layout() {
                 </header>
 
                 {/* Page */}
-                <main className="flex-1 p-4 sm:p-6 overflow-auto">
+                <main className="flex-1 p-4 sm:p-6 overflow-auto pb-24 md:pb-6">
                     <Outlet />
                 </main>
             </div>
+
+            {/* ── Mobile bottom tab bar ───────────────────────── */}
+            <nav className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-100 shadow-[0_-1px_6px_rgba(0,0,0,0.06)] md:hidden safe-bottom">
+                <div className="flex">
+                    {bottomNavItems.map(({ to, label, icon: Icon }) => (
+                        <NavLink
+                            key={to}
+                            to={to}
+                            className={({ isActive }) =>
+                                `flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px] text-[10px] font-semibold transition-colors ${
+                                    isActive ? 'text-brand-600' : 'text-gray-400'
+                                }`
+                            }
+                        >
+                            {({ isActive }) => (
+                                <>
+                                    <Icon className={`w-5 h-5 transition-transform ${isActive ? 'scale-110' : ''}`} />
+                                    {label}
+                                </>
+                            )}
+                        </NavLink>
+                    ))}
+                </div>
+            </nav>
         </div>
     )
 }

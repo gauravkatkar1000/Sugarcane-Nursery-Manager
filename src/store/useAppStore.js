@@ -296,6 +296,22 @@ const useAppStore = create((set, get) => ({
         }
     },
 
+    // ── labour: activate worker ──────────────────────────────
+    activateWorker: async (id) => {
+        get().setLoading(`activate_${id}`, true);
+        try {
+            await api.updateWorker(id, { active: true });
+            set((s) => ({ workers: s.workers.map((w) => w.id === id ? { ...w, active: true } : w) }));
+            toast.success('Worker activated.');
+            return true;
+        } catch (e) {
+            toast.error('Failed to activate worker: ' + e.message);
+            return false;
+        } finally {
+            get().setLoading(`activate_${id}`, false);
+        }
+    },
+
     // ── labour: save attendance ──────────────────────────────
     saveAttendance: async (date, records) => {
         get().setLoading('saveAttendance', true);

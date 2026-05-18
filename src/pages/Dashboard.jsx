@@ -246,15 +246,15 @@ export default function Dashboard() {
                                     {['PENDING', 'CONFIRMED', 'PREPARED'].includes(o.status) && (
                                         <div className="border-t border-gray-100 pt-3 grid grid-cols-2 gap-2">
                                             {o.status === 'PENDING' && (
-                                                <DashActionBtn label="Confirm" color="blue" loading={loading[`confirm_${o.id}`]} onClick={() => confirmOrder(o.id)} />
+                                                <DashActionBtn label="Confirm" color="blue" mobile loading={loading[`confirm_${o.id}`]} onClick={() => confirmOrder(o.id)} />
                                             )}
                                             {o.status === 'CONFIRMED' && (
-                                                <DashActionBtn label="Prepare" color="purple" loading={loading[`prepare_${o.id}`]} onClick={() => prepareOrder(o.id)} />
+                                                <DashActionBtn label="Prepare" color="purple" mobile loading={loading[`prepare_${o.id}`]} onClick={() => prepareOrder(o.id)} />
                                             )}
                                             {o.status === 'PREPARED' && (
-                                                <DashActionBtn label="Deliver" color="green" loading={loading[`deliver_${o.id}`]} onClick={() => deliverOrder(o.id)} />
+                                                <DashActionBtn label="Deliver" color="green" mobile loading={loading[`deliver_${o.id}`]} onClick={() => deliverOrder(o.id)} />
                                             )}
-                                            <DashActionBtn label="Cancel" color="red" loading={loading[`cancel_${o.id}`]} onClick={() => setCancelTarget(o)} />
+                                            <DashActionBtn label="Cancel" color="red" mobile loading={loading[`cancel_${o.id}`]} onClick={() => setCancelTarget(o)} />
                                         </div>
                                     )}
                                 </div>
@@ -342,7 +342,7 @@ export default function Dashboard() {
     )
 }
 
-function DashActionBtn({ label, color, loading, onClick }) {
+function DashActionBtn({ label, color, loading, onClick, mobile }) {
     const colors = {
         blue:   'bg-blue-100 text-blue-700 hover:bg-blue-200',
         purple: 'bg-purple-100 text-purple-700 hover:bg-purple-200',
@@ -353,7 +353,9 @@ function DashActionBtn({ label, color, loading, onClick }) {
         <button
             onClick={onClick}
             disabled={loading}
-            className={`px-2.5 py-1 text-xs rounded-lg font-semibold transition-colors disabled:opacity-50 ${colors[color]}`}
+            className={`rounded-lg font-semibold transition-colors disabled:opacity-50 flex items-center justify-center ${colors[color]} ${
+                mobile ? 'w-full py-2.5 text-sm' : 'px-2.5 py-1 text-xs'
+            }`}
         >
             {loading
                 ? <span className="inline-block w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />

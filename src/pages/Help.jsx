@@ -1,7 +1,8 @@
 import {
     BookOpen, ShoppingCart, Package, ArrowRightLeft,
     Archive, CheckCircle, Clock, Truck, XCircle, AlertTriangle,
-    Leaf, Box, FlaskConical, Layers, Wind, Sprout, Calculator, RotateCcw
+    Leaf, Box, FlaskConical, Layers, Wind, Sprout, Calculator, RotateCcw,
+    Users, CalendarDays, BarChart2, UserPlus, UserX
 } from 'lucide-react'
 
 const Section = ({ title, icon: Icon, children }) => (
@@ -205,6 +206,64 @@ export default function Help() {
                     <Row label={<code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">CONSUME_RESERVED</code>}>Reserved materials consumed when an order moves to PREPARED.</Row>
                     <Row label={<code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">FINAL_CONSUME</code>}>Ready trays deducted on delivery.</Row>
                     <Row label={<code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">REVERSAL</code>}>Manual correction — reverses a previous entry.</Row>
+                </div>
+            </Section>
+
+            {/* Labour Management */}
+            <Section title="Labour Management" icon={Users}>
+                <p className="text-sm text-gray-500">Track your daily workers, mark attendance, and calculate monthly wages — all from one place.</p>
+
+                {/* Three tabs explained */}
+                <div className="space-y-3">
+                    {[
+                        {
+                            icon: CalendarDays,
+                            iconColor: 'text-brand-600',
+                            bg: 'bg-brand-50',
+                            border: 'border-brand-100',
+                            title: 'Attendance Tab',
+                            desc: 'Select a date and mark each worker as Present or Absent. The daily wage total updates live as you toggle. Tap Save Attendance to record — you can re-open the same date anytime to edit it.',
+                        },
+                        {
+                            icon: UserPlus,
+                            iconColor: 'text-green-600',
+                            bg: 'bg-green-50',
+                            border: 'border-green-100',
+                            title: 'Workers Tab',
+                            desc: 'Add workers with their name, daily rate (₹/day), and optional phone number. Deactivate a worker to remove them from the attendance list — their past records are preserved. Inactive workers can be reactivated anytime.',
+                        },
+                        {
+                            icon: BarChart2,
+                            iconColor: 'text-purple-600',
+                            bg: 'bg-purple-50',
+                            border: 'border-purple-100',
+                            title: 'Summary Tab',
+                            desc: 'Pick a month to see each worker\'s days present, daily rate, and total earned. Tap the calendar icon on any row to see a day-by-day attendance grid for that worker — green = present, red = absent, grey = not yet recorded.',
+                        },
+                    ].map(({ icon: Icon, iconColor, bg, border, title, desc }) => (
+                        <div key={title} className={`rounded-xl border p-4 ${bg} ${border}`}>
+                            <div className="flex items-center gap-2 mb-1.5">
+                                <Icon className={`w-4 h-4 ${iconColor}`} />
+                                <p className="text-sm font-semibold text-gray-800">{title}</p>
+                            </div>
+                            <p className="text-sm text-gray-600 leading-relaxed">{desc}</p>
+                        </div>
+                    ))}
+                </div>
+
+                <div className="divide-y divide-gray-50">
+                    <Row label={<span className="flex items-center gap-1.5"><UserPlus className="w-3.5 h-3.5 text-green-600" /> Add Worker</span>}>
+                        Go to Workers tab → tap <strong>Add Worker</strong>. Enter name and daily rate (required) and an optional phone number. The worker immediately appears in the attendance list.
+                    </Row>
+                    <Row label={<span className="flex items-center gap-1.5"><UserX className="w-3.5 h-3.5 text-red-500" /> Deactivate / Activate</span>}>
+                        Deactivating hides a worker from the daily attendance screen. All their historical attendance and wage data is kept intact. You can reactivate them at any time from the Workers tab.
+                    </Row>
+                    <Row label="Wage Calculation">
+                        Total earned = <strong>Days Present × Daily Rate</strong>. Rates are per worker and can differ. The summary always reflects the current daily rate — if you change a rate, past months recalculate automatically.
+                    </Row>
+                    <Row label="Re-opening a past date">
+                        The attendance tab pre-loads whatever was saved for the selected date. You can change it and save again — the previous record is replaced.
+                    </Row>
                 </div>
             </Section>
 

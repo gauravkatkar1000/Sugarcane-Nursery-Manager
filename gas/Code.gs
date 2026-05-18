@@ -70,19 +70,7 @@ function doGet(e) {
       return respond(sheetToObjects(getSheet('CurrentStock')));
     }
     if (action === 'getWorkers') {
-      return respond(sheetToObjects(getSheet('Workers')));
-    }
-    if (action === 'getAttendance') {
-      const rows = sheetToObjects(getSheet('Attendance'));
-      const dateFrom = e.parameter.date_from;
-      const dateTo   = e.parameter.date_to;
-      if (dateFrom && dateTo) {
-        return respond(rows.filter(r => String(r.date) >= dateFrom && String(r.date) <= dateTo));
-      }
-      if (dateFrom) {
-        return respond(rows.filter(r => String(r.date) === dateFrom));
-      }
-      return respond(rows);
+      return respond(workersSheetToObjects());
     }
 
     return respondError('Unknown GET action: ' + action);
@@ -102,9 +90,9 @@ function doPost(e) {
     if (action === 'createOrder')         return createOrder(payload.data);
     if (action === 'updateOrder')         return updateOrder(payload.id, payload.fields);
     if (action === 'addLedgerEntries')    return addLedgerEntries(payload.entries);
-    if (action === 'addWorker')           return addWorker(payload.data);
-    if (action === 'updateWorker')        return updateWorker(payload.id, payload.fields);
-    if (action === 'saveAttendance')      return saveAttendance(payload.date, payload.records);
+    if (action === 'addWorker')      return addWorker(payload.data);
+    if (action === 'updateWorker')   return updateWorker(payload.id, payload.fields);
+    if (action === 'saveAttendance') return saveAttendance(payload.date, payload.records);
 
     return respondError('Unknown POST action: ' + action);
   } catch (err) {
@@ -283,6 +271,27 @@ function recalcFromLedger(ledger) {
 }
 
 // ══════════════════════════════════════════════════
+// workersSheetToObjects
+// Reads Workers sheet and normalises any date-typed
+// column headers back to YYYY-MM-DD strings.
+// ══════════════════════════════════════════════════
+function workersSheetToObjects() {
+  const sheet = getSheet('Workers');
+  const tz    = Session.getScriptTimeZone();
+  const data  = sheet.getDataRange().getValues();
+  const headers = data[0].map(h =>
+    h instanceof Date ? Utilities.formatDate(h, tz, 'yyyy-MM-dd') : String(h)
+  );
+  return data.slice(1)
+    .filter(r => r[0] !== '')
+    .map(row => {
+      const obj = {};
+      headers.forEach((h, i) => { obj[h] = row[i]; });
+      return obj;
+    });
+}
+
+// ══════════════════════════════════════════════════
 // addWorker
 // ══════════════════════════════════════════════════
 function addWorker(data) {
@@ -296,7 +305,6 @@ function addWorker(data) {
       daily_rate: Number(data.daily_rate) || 0,
       phone:      data.phone || '',
       active:     true,
-      created_at: new Date().toISOString(),
     };
     sheet.appendRow(objectToRow(sheet, worker));
     return respond(worker);
@@ -312,50 +320,60 @@ function updateWorker(id, fields) {
   const lock = LockService.getScriptLock();
   lock.tryLock(5000);
   try {
-    const sheet = getSheet('Workers');
+    const sheet  = getSheet('Workers');
     const rowIdx = findRowById(sheet, id);
     if (rowIdx === -1) return respondError('Worker not found: ' + id);
-    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-    const rowData = sheet.getRange(rowIdx, 1, 1, headers.length).getValues()[0];
-    const current = {};
-    headers.forEach((h, i) => { current[h] = rowData[i]; });
+    const tz = Session.getScriptTimeZone();
+    const rawHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const headers = rawHeaders.map(h =>
+      h instanceof Date ? Utilities.formatDate(h, tz, 'yyyy-MM-dd') : String(h)
+    );
     headers.forEach((h, i) => {
       if (fields[h] !== undefined) sheet.getRange(rowIdx, i + 1).setValue(fields[h]);
     });
-    return respond({ ...current, ...fields });
+    return respond(workersSheetToObjects().find(w => String(w.id) === String(id)) || {});
   } finally {
     lock.releaseLock();
   }
 }
 
 // ══════════════════════════════════════════════════
-// saveAttendance — replaces all records for the date
+// saveAttendance
+// Adds a date column to the Workers sheet if it
+// doesn't exist, then marks TRUE/FALSE per worker.
+// Returns the updated full workers array.
 // ══════════════════════════════════════════════════
 function saveAttendance(date, records) {
   const lock = LockService.getScriptLock();
   lock.tryLock(5000);
   try {
-    const sheet = getSheet('Attendance');
-    if (sheet.getLastRow() > 1) {
-      const all = sheet.getDataRange().getValues();
-      const dateIdx = all[0].indexOf('date');
-      // Delete existing rows for this date (bottom-up to preserve indices)
-      for (let i = all.length - 1; i >= 1; i--) {
-        if (String(all[i][dateIdx]) === String(date)) sheet.deleteRow(i + 1);
-      }
+    const sheet = getSheet('Workers');
+    const tz    = Session.getScriptTimeZone();
+    const rawHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const headers = rawHeaders.map(h =>
+      h instanceof Date ? Utilities.formatDate(h, tz, 'yyyy-MM-dd') : String(h)
+    );
+
+    // Add date column if it doesn't exist yet
+    let dateColIdx = headers.indexOf(date);
+    if (dateColIdx === -1) {
+      dateColIdx = headers.length;
+      sheet.getRange(1, dateColIdx + 1).setValue(date);
     }
-    const created_at = new Date().toISOString();
+    const dateColNum = dateColIdx + 1; // 1-indexed
+
+    // Update each worker row
+    const data = sheet.getDataRange().getValues();
     records.forEach(r => {
-      const row = {
-        id:         Utilities.getUuid(),
-        worker_id:  r.worker_id,
-        date:       date,
-        present:    r.present === true || r.present === 'true',
-        created_at,
-      };
-      sheet.appendRow(objectToRow(sheet, row));
+      for (let i = 1; i < data.length; i++) {
+        if (String(data[i][0]) === String(r.worker_id)) {
+          sheet.getRange(i + 1, dateColNum).setValue(r.present === true);
+          break;
+        }
+      }
     });
-    return respond(records);
+
+    return respond(workersSheetToObjects());
   } finally {
     lock.releaseLock();
   }

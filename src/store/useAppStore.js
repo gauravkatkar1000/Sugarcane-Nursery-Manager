@@ -17,7 +17,6 @@ const useAppStore = create((set, get) => ({
     stock: [],
     ledger: [],
     workers: [],
-    attendance: [],
     loading: {},
     error: null,
 
@@ -265,21 +264,6 @@ const useAppStore = create((set, get) => ({
         }
     },
 
-    // ── labour: fetch attendance ─────────────────────────────
-    fetchAttendance: async (dateFrom, dateTo) => {
-        get().setLoading('attendance', true);
-        try {
-            const attendance = await api.getAttendance(dateFrom, dateTo);
-            set({ attendance });
-            return attendance;
-        } catch (e) {
-            toast.error('Failed to load attendance: ' + e.message);
-            return [];
-        } finally {
-            get().setLoading('attendance', false);
-        }
-    },
-
     // ── labour: add worker ───────────────────────────────────
     addWorker: async (data) => {
         get().setLoading('addWorker', true);
@@ -316,8 +300,8 @@ const useAppStore = create((set, get) => ({
     saveAttendance: async (date, records) => {
         get().setLoading('saveAttendance', true);
         try {
-            await api.saveAttendance(date, records);
-            set({ attendance: records.map((r) => ({ ...r, date })) });
+            const workers = await api.saveAttendance(date, records);
+            set({ workers });
             toast.success('Attendance saved!');
             return true;
         } catch (e) {

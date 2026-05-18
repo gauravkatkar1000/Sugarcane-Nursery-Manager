@@ -64,9 +64,6 @@ export const getCurrentStock = () => get('getCurrentStock');
 // ── Labour ────────────────────────────────────────────────
 export const getWorkers = () => get('getWorkers');
 
-export const getAttendance = (dateFrom, dateTo) =>
-    get('getAttendance', dateFrom ? { date_from: dateFrom, ...(dateTo ? { date_to: dateTo } : {}) } : {});
-
 export const addWorker = (data) =>
     post({ action: 'addWorker', data });
 

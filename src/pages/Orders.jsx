@@ -1,8 +1,7 @@
-import { useState, useMemo, useCallback } from 'react'
-import { Search, Filter, ChevronUp, ChevronDown } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { Search, ChevronUp, ChevronDown } from 'lucide-react'
 import useAppStore from '../store/useAppStore'
 import StatusBadge from '../components/StatusBadge'
-import LoadingSpinner from '../components/LoadingSpinner'
 import { ORDER_STATUSES } from '../utils/constants'
 import { formatDateIST } from '../utils/dateUtils'
 
@@ -39,8 +38,14 @@ export default function Orders() {
                 return true
             })
             .sort((a, b) => {
-                const av = a[sortKey] || '', bv = b[sortKey] || ''
-                return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av)
+                const av = a[sortKey] ?? '', bv = b[sortKey] ?? ''
+                const numericKeys = ['acre', 'trays_required']
+                if (numericKeys.includes(sortKey)) {
+                    return sortDir === 'asc' ? Number(av) - Number(bv) : Number(bv) - Number(av)
+                }
+                return sortDir === 'asc'
+                    ? String(av).localeCompare(String(bv))
+                    : String(bv).localeCompare(String(av))
             })
     }, [orders, search, statusFilter, dateFrom, dateTo, sortKey, sortDir])
 
@@ -87,15 +92,35 @@ export default function Orders() {
             <div className="card overflow-hidden">
                 {/* Mobile Cards */}
                 <div className="md:hidden flex flex-col gap-3 p-4 bg-gray-50">
-                    {loading.orders && <div className="py-8 flex justify-center"><LoadingSpinner /></div>}
-                    {!loading.orders && paged.length === 0 && <p className="text-center text-gray-400 text-sm py-8">No orders found</p>}
-                    {paged.map((o) => (
+                    {loading.orders && [1, 2, 3].map((i) => (
+                        <div key={i} className="bg-white border rounded-xl p-4 shadow-sm space-y-3">
+                            <div className="flex items-center justify-between">
+                                <div className="shimmer h-5 w-32 rounded-md" />
+                                <div className="shimmer h-5 w-20 rounded-full" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                {[1, 2, 3, 4].map((j) => <div key={j} className="shimmer h-12 rounded-lg" />)}
+                            </div>
+                            <div className="border-t border-gray-100 pt-3 grid grid-cols-2 gap-2">
+                                <div className="shimmer h-9 rounded-lg" />
+                                <div className="shimmer h-9 rounded-lg" />
+                            </div>
+                        </div>
+                    ))}
+                    {!loading.orders && paged.length === 0 && (
+                        <p className="text-center text-gray-400 text-sm py-8">No orders found</p>
+                    )}
+                    {!loading.orders && paged.map((o) => {
+                        const amount = o.rate && o.seedlings_required
+                            ? parseFloat(o.rate) * parseFloat(o.seedlings_required)
+                            : null
+                        return (
                         <div key={o.id} className="bg-white border rounded-xl p-4 shadow-sm space-y-3">
                             <div className="flex items-center justify-between">
                                 <h3 className="font-bold text-gray-900 text-lg">{o.name}</h3>
                                 <StatusBadge status={o.status} />
                             </div>
-                            <div className="grid grid-cols-3 gap-2 text-center text-sm">
+                            <div className="grid grid-cols-2 gap-2 text-center text-sm">
                                 <div className="bg-gray-50 rounded-lg p-2 border border-gray-100">
                                     <p className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-0.5">Acre</p>
                                     <p className="font-semibold text-gray-800">{o.acre}</p>
@@ -107,6 +132,12 @@ export default function Orders() {
                                 <div className="bg-brand-50 rounded-lg p-2 border border-brand-100/50">
                                     <p className="text-[10px] uppercase text-brand-600/80 font-bold tracking-wider mb-0.5">Target</p>
                                     <p className="font-semibold text-brand-700 text-xs sm:text-sm mt-0.5">{formatDateIST(o.delivery_date)}</p>
+                                </div>
+                                <div className="bg-green-50 rounded-lg p-2 border border-green-100/50">
+                                    <p className="text-[10px] uppercase text-green-600/80 font-bold tracking-wider mb-0.5">Amount</p>
+                                    <p className="font-semibold text-green-700 text-xs sm:text-sm mt-0.5">
+                                        {amount != null ? `₹${amount.toLocaleString('en-IN')}` : '—'}
+                                    </p>
                                 </div>
                             </div>
                             <div className="border-t border-gray-100 pt-3">
@@ -126,7 +157,8 @@ export default function Orders() {
                                 </div>
                             </div>
                         </div>
-                    ))}
+                        )
+                    })}
                 </div>
 
                 {/* Desktop Table */}
@@ -139,6 +171,7 @@ export default function Orders() {
                                     { key: 'acre', label: 'Acre' },
                                     { key: 'trays_required', label: 'Trays' },
                                     { key: 'delivery_date', label: 'Delivery' },
+                                    { key: null, label: 'Amount' },
                                     { key: 'status', label: 'Status' },
                                     { key: null, label: 'Actions' },
                                 ].map(({ key, label }) => (
@@ -156,13 +189,26 @@ export default function Orders() {
                             </tr>
                         </thead>
                         <tbody>
-                            {loading.orders && (
-                                <tr><td colSpan={6} className="py-12"><div className="flex justify-center"><LoadingSpinner /></div></td></tr>
-                            )}
+                            {loading.orders && [1, 2, 3, 4, 5].map((i) => (
+                                <tr key={i}>
+                                    <td className="table-td"><div className="shimmer h-4 w-28 rounded-md" /></td>
+                                    <td className="table-td"><div className="shimmer h-4 w-10 rounded-md" /></td>
+                                    <td className="table-td"><div className="shimmer h-4 w-10 rounded-md" /></td>
+                                    <td className="table-td"><div className="shimmer h-4 w-20 rounded-md" /></td>
+                                    <td className="table-td"><div className="shimmer h-4 w-20 rounded-md" /></td>
+                                    <td className="table-td"><div className="shimmer h-5 w-20 rounded-full" /></td>
+                                    <td className="table-td">
+                                        <div className="flex gap-1">
+                                            <div className="shimmer h-6 w-16 rounded-lg" />
+                                            <div className="shimmer h-6 w-14 rounded-lg" />
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
                             {!loading.orders && paged.length === 0 && (
-                                <tr><td colSpan={6} className="py-12 text-center text-gray-400 text-sm">No orders found</td></tr>
+                                <tr><td colSpan={7} className="py-12 text-center text-gray-400 text-sm">No orders found</td></tr>
                             )}
-                            {paged.map((o) => (
+                            {!loading.orders && paged.map((o) => (
                                 <OrderRow
                                     key={o.id}
                                     order={o}
@@ -196,12 +242,19 @@ export default function Orders() {
 function OrderRow({ order, loading, onConfirm, onPrepare, onDeliver, onCancel }) {
     const busy = (key) => !!loading[`${key}_${order.id}`]
 
+    const amount = order.rate && order.seedlings_required
+        ? parseFloat(order.rate) * parseFloat(order.seedlings_required)
+        : null
+
     return (
         <tr className="hover:bg-gray-50 transition-colors">
             <td className="table-td font-medium text-gray-900">{order.name}</td>
             <td className="table-td">{order.acre}</td>
             <td className="table-td">{order.trays_required}</td>
             <td className="table-td text-gray-500">{formatDateIST(order.delivery_date)}</td>
+            <td className="table-td font-medium text-gray-900">
+                {amount != null ? `₹${amount.toLocaleString('en-IN')}` : <span className="text-gray-300">—</span>}
+            </td>
             <td className="table-td"><StatusBadge status={order.status} /></td>
             <td className="table-td">
                 <div className="flex items-center gap-1 flex-wrap">
@@ -238,7 +291,10 @@ function ActionBtn({ id, label, color, loading, onClick, fullWidth }) {
             disabled={loading}
             className={`${widthClass} rounded-lg font-semibold transition-colors disabled:opacity-50 ${colors[color]}`}
         >
-            {loading ? <LoadingSpinner size="sm" /> : label}
+            {loading
+                ? <span className="inline-block w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                : label
+            }
         </button>
     )
 }

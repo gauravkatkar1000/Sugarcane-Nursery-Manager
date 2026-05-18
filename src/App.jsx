@@ -5,6 +5,7 @@ import PlaceOrder from './pages/PlaceOrder'
 import Orders from './pages/Orders'
 import Stock from './pages/Stock'
 import AddStock from './pages/AddStock'
+import Help from './pages/Help'
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
           <Route path="place-order" element={<PlaceOrder />} />
           <Route path="stock" element={<Stock />} />
           <Route path="add-stock" element={<AddStock />} />
+          <Route path="help" element={<Help />} />
         </Route>
       </Routes>
     </BrowserRouter>

@@ -1,16 +1,22 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Package, ShoppingCart, AlertTriangle, TrendingUp, ArrowRight, Sprout } from 'lucide-react'
+import { Package, ShoppingCart, AlertTriangle, ArrowRight, Sprout } from 'lucide-react'
 import useAppStore from '../store/useAppStore'
 import StatusBadge from '../components/StatusBadge'
-import LoadingSpinner from '../components/LoadingSpinner'
+import Modal from '../components/Modal'
 import { ITEM_LABELS, ITEM_UNITS, LOW_STOCK_THRESHOLDS } from '../utils/constants'
 import { getStockItem, netAvailable } from '../utils/stock'
 import { formatFullDateIST, formatDateIST } from '../utils/dateUtils'
+
 export default function Dashboard() {
     const orders = useAppStore((s) => s.orders)
     const stock = useAppStore((s) => s.stock)
     const loading = useAppStore((s) => s.loading)
+    const confirmOrder = useAppStore((s) => s.confirmOrder)
+    const prepareOrder = useAppStore((s) => s.prepareOrder)
+    const deliverOrder = useAppStore((s) => s.deliverOrder)
+    const cancelOrder = useAppStore((s) => s.cancelOrder)
+    const [cancelTarget, setCancelTarget] = useState(null)
 
     const stats = useMemo(() => ({
         pending: orders.filter((o) => o.status === 'PENDING').length,
@@ -41,9 +47,7 @@ export default function Dashboard() {
                     <Sprout className="w-8 h-8 opacity-80" />
                     <div>
                         <h2 className="font-semibold text-lg">Sugarcane Nursery Manager</h2>
-                        <p className="text-brand-100 text-sm">
-                            {formatFullDateIST(new Date())}
-                        </p>
+                        <p className="text-brand-100 text-sm">{formatFullDateIST(new Date())}</p>
                     </div>
                 </div>
             </div>
@@ -51,18 +55,17 @@ export default function Dashboard() {
             {/* ── Order stats ───────────────────────────────── */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
-                    { label: 'Pending', value: stats.pending, color: 'text-amber-600', bg: 'bg-amber-50' },
-                    { label: 'Confirmed', value: stats.confirmed, color: 'text-blue-600', bg: 'bg-blue-50' },
-                    { label: 'Prepared', value: stats.prepared, color: 'text-purple-600', bg: 'bg-purple-50' },
-                    { label: 'Delivered', value: stats.delivered, color: 'text-green-600', bg: 'bg-green-50' },
-                ].map(({ label, value, color, bg }) => (
+                    { label: 'Pending',   value: stats.pending,   color: 'text-amber-600'  },
+                    { label: 'Confirmed', value: stats.confirmed, color: 'text-blue-600'   },
+                    { label: 'Prepared',  value: stats.prepared,  color: 'text-purple-600' },
+                    { label: 'Delivered', value: stats.delivered, color: 'text-green-600'  },
+                ].map(({ label, value, color }) => (
                     <div key={label} className="card p-4">
                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{label}</p>
-                        {loading.orders ? (
-                            <p className={`text-3xl font-bold mt-1 text-gray-300 animate-pulse`}>...</p>
-                        ) : (
-                            <p className={`text-3xl font-bold mt-1 ${color}`}>{value}</p>
-                        )}
+                        {loading.orders
+                            ? <div className="shimmer h-9 w-14 rounded-lg mt-1" />
+                            : <p className={`text-3xl font-bold mt-1 ${color}`}>{value}</p>
+                        }
                         <p className="text-xs text-gray-400 mt-1">orders</p>
                     </div>
                 ))}
@@ -80,7 +83,16 @@ export default function Dashboard() {
                             View all <ArrowRight className="w-3 h-3" />
                         </Link>
                     </div>
-                    {lowStockItems.length === 0 ? (
+                    {loading.stock ? (
+                        <div className="space-y-2">
+                            {[1, 2, 3].map((i) => (
+                                <div key={i} className="flex items-center justify-between p-3 rounded-xl">
+                                    <div className="shimmer h-4 w-32 rounded-md" />
+                                    <div className="shimmer h-4 w-16 rounded-md" />
+                                </div>
+                            ))}
+                        </div>
+                    ) : lowStockItems.length === 0 ? (
                         <p className="text-sm text-gray-400 text-center py-4">✅ All stock levels are healthy</p>
                     ) : (
                         <div className="space-y-2">
@@ -109,9 +121,12 @@ export default function Dashboard() {
                     </div>
                     <div className="space-y-2">
                         {loading.stock ? (
-                            <div className="py-8 flex justify-center">
-                                <LoadingSpinner size="md" />
-                            </div>
+                            [1, 2, 3, 4, 5].map((i) => (
+                                <div key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                                    <div className="shimmer h-3.5 w-28 rounded-md" />
+                                    <div className="shimmer h-3.5 w-14 rounded-md" />
+                                </div>
+                            ))
                         ) : stock.length === 0 ? (
                             <p className="text-sm text-gray-400 text-center py-4">No stock data yet</p>
                         ) : (
@@ -144,10 +159,51 @@ export default function Dashboard() {
                         View all <ArrowRight className="w-3 h-3" />
                     </Link>
                 </div>
+
                 {loading.orders ? (
-                    <div className="py-12 flex justify-center">
-                        <LoadingSpinner size="lg" />
-                    </div>
+                    <>
+                        {/* Mobile shimmer */}
+                        <div className="md:hidden flex flex-col gap-3">
+                            {[1, 2, 3].map((i) => (
+                                <div key={i} className="bg-white border rounded-xl p-4 shadow-sm space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <div className="shimmer h-5 w-32 rounded-md" />
+                                        <div className="shimmer h-5 w-20 rounded-full" />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {[1, 2, 3, 4].map((j) => (
+                                            <div key={j} className="shimmer h-12 rounded-lg" />
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        {/* Desktop shimmer */}
+                        <div className="hidden md:block overflow-x-auto -mx-5 px-5">
+                            <table className="w-full min-w-[500px]">
+                                <thead>
+                                    <tr>
+                                        {['Customer', 'Acre', 'Trays', 'Delivery', 'Amount', 'Status', 'Actions'].map((h) => (
+                                            <th key={h} className="table-th first:pl-0 first:rounded-l-lg last:rounded-r-lg">{h}</th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {[1, 2, 3, 4].map((i) => (
+                                        <tr key={i}>
+                                            <td className="table-td"><div className="shimmer h-4 w-28 rounded-md" /></td>
+                                            <td className="table-td"><div className="shimmer h-4 w-10 rounded-md" /></td>
+                                            <td className="table-td"><div className="shimmer h-4 w-10 rounded-md" /></td>
+                                            <td className="table-td"><div className="shimmer h-4 w-20 rounded-md" /></td>
+                                            <td className="table-td"><div className="shimmer h-4 w-20 rounded-md" /></td>
+                                            <td className="table-td"><div className="shimmer h-5 w-20 rounded-full" /></td>
+                                            <td className="table-td"><div className="shimmer h-6 w-14 rounded-lg" /></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </>
                 ) : recentOrders.length === 0 ? (
                     <div className="text-center py-8">
                         <p className="text-sm text-gray-400">No orders yet.</p>
@@ -157,13 +213,17 @@ export default function Dashboard() {
                     <>
                         {/* Mobile Cards */}
                         <div className="md:hidden flex flex-col gap-3">
-                            {recentOrders.map((o) => (
+                            {recentOrders.map((o) => {
+                                const amount = o.rate && o.seedlings_required
+                                    ? parseFloat(o.rate) * parseFloat(o.seedlings_required)
+                                    : null
+                                return (
                                 <div key={o.id} className="bg-white border rounded-xl p-4 shadow-sm space-y-3">
                                     <div className="flex items-center justify-between">
                                         <h3 className="font-bold text-gray-900 text-lg">{o.name}</h3>
                                         <StatusBadge status={o.status} />
                                     </div>
-                                    <div className="grid grid-cols-3 gap-2 text-center text-sm">
+                                    <div className="grid grid-cols-2 gap-2 text-center text-sm">
                                         <div className="bg-gray-50 rounded-lg p-2 border border-gray-100">
                                             <p className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-0.5">Acre</p>
                                             <p className="font-semibold text-gray-800">{o.acre}</p>
@@ -176,24 +236,30 @@ export default function Dashboard() {
                                             <p className="text-[10px] uppercase text-brand-600/80 font-bold tracking-wider mb-0.5">Target</p>
                                             <p className="font-semibold text-brand-700 text-xs sm:text-sm mt-0.5">{formatDateIST(o.delivery_date)}</p>
                                         </div>
+                                        <div className="bg-green-50 rounded-lg p-2 border border-green-100/50">
+                                            <p className="text-[10px] uppercase text-green-600/80 font-bold tracking-wider mb-0.5">Amount</p>
+                                            <p className="font-semibold text-green-700 text-xs sm:text-sm mt-0.5">
+                                                {amount != null ? `₹${amount.toLocaleString('en-IN')}` : '—'}
+                                            </p>
+                                        </div>
                                     </div>
                                     {['PENDING', 'CONFIRMED', 'PREPARED'].includes(o.status) && (
-                                        <div className="border-t border-gray-100 pt-3 flex w-full">
-                                            <button
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    if (confirm(`Cancel order for ${o.name}?`)) {
-                                                        useAppStore.getState().cancelOrder(o.id);
-                                                    }
-                                                }}
-                                                className="w-full text-sm bg-red-100 text-red-700 px-3 py-2 flex justify-center items-center rounded-lg font-semibold hover:bg-red-200 transition-colors"
-                                            >
-                                                {loading[`cancel_${o.id}`] ? '...' : 'Cancel Order'}
-                                            </button>
+                                        <div className="border-t border-gray-100 pt-3 grid grid-cols-2 gap-2">
+                                            {o.status === 'PENDING' && (
+                                                <DashActionBtn label="Confirm" color="blue" loading={loading[`confirm_${o.id}`]} onClick={() => confirmOrder(o.id)} />
+                                            )}
+                                            {o.status === 'CONFIRMED' && (
+                                                <DashActionBtn label="Prepare" color="purple" loading={loading[`prepare_${o.id}`]} onClick={() => prepareOrder(o.id)} />
+                                            )}
+                                            {o.status === 'PREPARED' && (
+                                                <DashActionBtn label="Deliver" color="green" loading={loading[`deliver_${o.id}`]} onClick={() => deliverOrder(o.id)} />
+                                            )}
+                                            <DashActionBtn label="Cancel" color="red" loading={loading[`cancel_${o.id}`]} onClick={() => setCancelTarget(o)} />
                                         </div>
                                     )}
                                 </div>
-                            ))}
+                                )
+                            })}
                         </div>
 
                         {/* Desktop Table */}
@@ -201,42 +267,98 @@ export default function Dashboard() {
                             <table className="w-full min-w-[500px]">
                                 <thead>
                                     <tr>
-                                        {['Customer', 'Acre', 'Trays', 'Delivery', 'Status', 'Actions'].map((h) => (
+                                        {['Customer', 'Acre', 'Trays', 'Delivery', 'Amount', 'Status', 'Actions'].map((h) => (
                                             <th key={h} className="table-th first:pl-0 first:rounded-l-lg last:rounded-r-lg">{h}</th>
                                         ))}
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {recentOrders.map((o) => (
+                                    {recentOrders.map((o) => {
+                                        const amount = o.rate && o.seedlings_required
+                                            ? parseFloat(o.rate) * parseFloat(o.seedlings_required)
+                                            : null
+                                        return (
                                         <tr key={o.id} className="hover:bg-gray-50 transition-colors">
                                             <td className="table-td font-medium text-gray-900">{o.name}</td>
                                             <td className="table-td">{o.acre} ac</td>
                                             <td className="table-td">{o.trays_required}</td>
                                             <td className="table-td">{formatDateIST(o.delivery_date)}</td>
+                                            <td className="table-td font-medium text-gray-900">
+                                                {amount != null ? `₹${amount.toLocaleString('en-IN')}` : <span className="text-gray-300">—</span>}
+                                            </td>
                                             <td className="table-td"><StatusBadge status={o.status} /></td>
                                             <td className="table-td">
-                                                {['PENDING', 'CONFIRMED', 'PREPARED'].includes(o.status) && (
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.preventDefault();
-                                                            if (confirm(`Cancel order for ${o.name}?`)) {
-                                                                useAppStore.getState().cancelOrder(o.id);
-                                                            }
-                                                        }}
-                                                        className="text-xs bg-red-100 text-red-700 px-2.5 py-1 rounded-lg font-semibold hover:bg-red-200 transition-colors"
-                                                    >
-                                                        {loading[`cancel_${o.id}`] ? '...' : 'Cancel'}
-                                                    </button>
-                                                )}
+                                                <div className="flex items-center gap-1 flex-wrap">
+                                                    {o.status === 'PENDING' && (
+                                                        <DashActionBtn label="Confirm" color="blue" loading={loading[`confirm_${o.id}`]} onClick={() => confirmOrder(o.id)} />
+                                                    )}
+                                                    {o.status === 'CONFIRMED' && (
+                                                        <DashActionBtn label="Prepare" color="purple" loading={loading[`prepare_${o.id}`]} onClick={() => prepareOrder(o.id)} />
+                                                    )}
+                                                    {o.status === 'PREPARED' && (
+                                                        <DashActionBtn label="Deliver" color="green" loading={loading[`deliver_${o.id}`]} onClick={() => deliverOrder(o.id)} />
+                                                    )}
+                                                    {['PENDING', 'CONFIRMED', 'PREPARED'].includes(o.status) && (
+                                                        <DashActionBtn label="Cancel" color="red" loading={loading[`cancel_${o.id}`]} onClick={() => setCancelTarget(o)} />
+                                                    )}
+                                                </div>
                                             </td>
                                         </tr>
-                                    ))}
+                                        )
+                                    })}
                                 </tbody>
                             </table>
                         </div>
                     </>
                 )}
             </div>
+
+            <Modal
+                open={!!cancelTarget}
+                onClose={() => setCancelTarget(null)}
+                title="Cancel Order"
+                maxWidth="max-w-sm"
+            >
+                <p className="text-sm text-gray-600 mb-6">
+                    Cancel order for <span className="font-semibold text-gray-900">{cancelTarget?.name}</span>? This cannot be undone.
+                </p>
+                <div className="flex gap-3">
+                    <button className="flex-1 btn-ghost" onClick={() => setCancelTarget(null)}>
+                        Keep Order
+                    </button>
+                    <button
+                        className="flex-1 bg-red-600 text-white rounded-xl py-2 text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-50"
+                        disabled={loading[`cancel_${cancelTarget?.id}`]}
+                        onClick={async () => {
+                            await cancelOrder(cancelTarget.id)
+                            setCancelTarget(null)
+                        }}
+                    >
+                        {loading[`cancel_${cancelTarget?.id}`] ? '...' : 'Yes, Cancel'}
+                    </button>
+                </div>
+            </Modal>
         </div>
+    )
+}
+
+function DashActionBtn({ label, color, loading, onClick }) {
+    const colors = {
+        blue:   'bg-blue-100 text-blue-700 hover:bg-blue-200',
+        purple: 'bg-purple-100 text-purple-700 hover:bg-purple-200',
+        green:  'bg-green-100 text-green-700 hover:bg-green-200',
+        red:    'bg-red-100 text-red-700 hover:bg-red-200',
+    }
+    return (
+        <button
+            onClick={onClick}
+            disabled={loading}
+            className={`px-2.5 py-1 text-xs rounded-lg font-semibold transition-colors disabled:opacity-50 ${colors[color]}`}
+        >
+            {loading
+                ? <span className="inline-block w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                : label
+            }
+        </button>
     )
 }

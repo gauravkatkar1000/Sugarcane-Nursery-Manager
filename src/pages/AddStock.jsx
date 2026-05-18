@@ -65,6 +65,7 @@ export default function AddStock() {
                             id="stock-note"
                             className="input"
                             placeholder="e.g. Received from supplier / truck delivery"
+                            maxLength={200}
                             value={form.note}
                             onChange={set('note')}
                         />

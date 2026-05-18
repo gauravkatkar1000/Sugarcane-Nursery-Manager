@@ -256,6 +256,8 @@ function recalcFromLedger(ledger) {
       s.reserved   += Math.abs(n);
     } else if (type === 'RELEASE') {
       s.reserved   -= Math.abs(n);
+    } else if (type === 'REVERSAL') {
+      s.available  += n;
     }
   });
 

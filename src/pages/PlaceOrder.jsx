@@ -54,7 +54,7 @@ export default function PlaceOrder() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label className="label">Customer Name *</label>
-                        <input id="order-name" className="input" placeholder="e.g. Ramesh Patel" value={form.name} onChange={set('name')} />
+                        <input id="order-name" className="input" placeholder="e.g. Ramesh Patel" maxLength={100} value={form.name} onChange={set('name')} />
                     </div>
                     <div>
                         <label className="label">Acre *</label>

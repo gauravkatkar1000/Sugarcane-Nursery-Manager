@@ -61,6 +61,13 @@ export const addLedgerEntries = (entries) =>
 // ── Stock ─────────────────────────────────────────────────
 export const getCurrentStock = () => get('getCurrentStock');
 
+// ── Payments ──────────────────────────────────────
+export const getPayments = (order_id) =>
+    get('getPayments', order_id ? { order_id } : {});
+
+export const addPayment = (data) =>
+    post({ action: 'addPayment', data });
+
 // ── Labour ────────────────────────────────────────────────
 export const getWorkers = () => get('getWorkers');
 

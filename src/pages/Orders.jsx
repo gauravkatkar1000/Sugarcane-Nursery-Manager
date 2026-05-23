@@ -2,27 +2,36 @@ import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { Search, ChevronUp, ChevronDown, Plus, ClipboardList } from 'lucide-react'
 import useAppStore from '../store/useAppStore'
-import StatusBadge from '../components/StatusBadge'
 import { ORDER_STATUSES } from '../utils/constants'
-import { formatDateIST } from '../utils/dateUtils'
+import { OrderCard, OrderTableRow } from '../components/OrderCard'
 
 const PAGE_SIZE = 10
 
 export default function Orders() {
-    const orders = useAppStore((s) => s.orders)
-    const loading = useAppStore((s) => s.loading)
+    const orders       = useAppStore((s) => s.orders)
+    const loading      = useAppStore((s) => s.loading)
+    const payments     = useAppStore((s) => s.payments)
     const confirmOrder = useAppStore((s) => s.confirmOrder)
     const prepareOrder = useAppStore((s) => s.prepareOrder)
     const deliverOrder = useAppStore((s) => s.deliverOrder)
-    const cancelOrder = useAppStore((s) => s.cancelOrder)
+    const cancelOrder  = useAppStore((s) => s.cancelOrder)
 
-    const [search, setSearch] = useState('')
+    const payByOrder = useMemo(() => {
+        const map = {}
+        payments.forEach((p) => {
+            if (!map[p.order_id]) map[p.order_id] = 0
+            map[p.order_id] += p.type === 'REFUND' ? -Number(p.amount) : Number(p.amount)
+        })
+        return map
+    }, [payments])
+
+    const [search, setSearch]       = useState('')
     const [statusFilter, setStatusFilter] = useState('')
-    const [dateFrom, setDateFrom] = useState('')
-    const [dateTo, setDateTo] = useState('')
-    const [sortKey, setSortKey] = useState('created_at')
-    const [sortDir, setSortDir] = useState('desc')
-    const [page, setPage] = useState(1)
+    const [dateFrom, setDateFrom]   = useState('')
+    const [dateTo, setDateTo]       = useState('')
+    const [sortKey, setSortKey]     = useState('created_at')
+    const [sortDir, setSortDir]     = useState('desc')
+    const [page, setPage]           = useState(1)
 
     const handleSort = (key) => {
         if (sortKey === key) setSortDir((d) => d === 'asc' ? 'desc' : 'asc')
@@ -116,7 +125,7 @@ export default function Orders() {
                                 <div className="shimmer h-5 w-20 rounded-full" />
                             </div>
                             <div className="grid grid-cols-2 gap-2">
-                                {[1, 2, 3, 4].map((j) => <div key={j} className="shimmer h-12 rounded-lg" />)}
+                                {[1,2,3,4].map((j) => <div key={j} className="shimmer h-12 rounded-lg" />)}
                             </div>
                             <div className="border-t border-gray-100 pt-3 grid grid-cols-2 gap-2">
                                 <div className="shimmer h-9 rounded-lg" />
@@ -127,56 +136,18 @@ export default function Orders() {
                     {!loading.orders && paged.length === 0 && (
                         <p className="text-center text-gray-400 text-sm py-8">No orders found</p>
                     )}
-                    {!loading.orders && paged.map((o) => {
-                        const amount = o.rate && o.seedlings_required
-                            ? parseFloat(o.rate) * parseFloat(o.seedlings_required)
-                            : null
-                        const anyBusy = !!(loading[`confirm_${o.id}`] || loading[`prepare_${o.id}`] || loading[`deliver_${o.id}`] || loading[`cancel_${o.id}`])
-                        return (
-                        <div key={o.id} className="bg-white border rounded-xl p-4 shadow-sm space-y-3">
-                            <div className="flex items-center justify-between">
-                                <h3 className="font-bold text-gray-900 text-lg">{o.name}</h3>
-                                <StatusBadge status={o.status} />
-                            </div>
-                            <div className="grid grid-cols-2 gap-2 text-center text-sm">
-                                <div className="bg-gray-50 rounded-lg p-2 border border-gray-100">
-                                    <p className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-0.5">Acre</p>
-                                    <p className="font-semibold text-gray-800">{o.acre}</p>
-                                </div>
-                                <div className="bg-gray-50 rounded-lg p-2 border border-gray-100">
-                                    <p className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-0.5">Trays</p>
-                                    <p className="font-semibold text-gray-800">{o.trays_required}</p>
-                                </div>
-                                <div className="bg-brand-50 rounded-lg p-2 border border-brand-100/50">
-                                    <p className="text-[10px] uppercase text-brand-600/80 font-bold tracking-wider mb-0.5">Target</p>
-                                    <p className="font-semibold text-brand-700 text-xs sm:text-sm mt-0.5">{formatDateIST(o.delivery_date)}</p>
-                                </div>
-                                <div className="bg-green-50 rounded-lg p-2 border border-green-100/50">
-                                    <p className="text-[10px] uppercase text-green-600/80 font-bold tracking-wider mb-0.5">Amount</p>
-                                    <p className="font-semibold text-green-700 text-xs sm:text-sm mt-0.5">
-                                        {amount != null ? `₹${amount.toLocaleString('en-IN')}` : '—'}
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="border-t border-gray-100 pt-3">
-                                <div className="grid grid-cols-2 gap-2">
-                                    {o.status === 'PENDING' && (
-                                        <ActionBtn fullWidth id={`m-confirm-${o.id}`} label="Confirm" color="blue" loading={loading[`confirm_${o.id}`]} disabled={anyBusy} onClick={() => confirmOrder(o.id)} />
-                                    )}
-                                    {o.status === 'CONFIRMED' && (
-                                        <ActionBtn fullWidth id={`m-prepare-${o.id}`} label="Prepare" color="purple" loading={loading[`prepare_${o.id}`]} disabled={anyBusy} onClick={() => prepareOrder(o.id)} />
-                                    )}
-                                    {o.status === 'PREPARED' && (
-                                        <ActionBtn fullWidth id={`m-deliver-${o.id}`} label="Deliver" color="green" loading={loading[`deliver_${o.id}`]} disabled={anyBusy} onClick={() => deliverOrder(o.id)} />
-                                    )}
-                                    {['PENDING', 'CONFIRMED', 'PREPARED'].includes(o.status) && (
-                                        <ActionBtn fullWidth id={`m-cancel-${o.id}`} label="Cancel" color="red" loading={loading[`cancel_${o.id}`]} disabled={anyBusy} onClick={() => cancelOrder(o.id)} />
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                        )
-                    })}
+                    {!loading.orders && paged.map((o) => (
+                        <OrderCard
+                            key={o.id}
+                            order={o}
+                            paid={payByOrder[o.id] || 0}
+                            loading={loading}
+                            onConfirm={() => confirmOrder(o.id)}
+                            onPrepare={() => prepareOrder(o.id)}
+                            onDeliver={() => deliverOrder(o.id)}
+                            onCancel={() => cancelOrder(o.id)}
+                        />
+                    ))}
                 </div>
 
                 {/* Desktop Table */}
@@ -185,13 +156,13 @@ export default function Orders() {
                         <thead>
                             <tr>
                                 {[
-                                    { key: 'name', label: 'Customer' },
-                                    { key: 'acre', label: 'Acre' },
-                                    { key: 'trays_required', label: 'Trays' },
+                                    { key: 'name',          label: 'Customer' },
+                                    { key: 'acre',          label: 'Acre'     },
+                                    { key: 'trays_required',label: 'Trays'    },
                                     { key: 'delivery_date', label: 'Delivery' },
-                                    { key: null, label: 'Amount' },
-                                    { key: 'status', label: 'Status' },
-                                    { key: null, label: 'Actions' },
+                                    { key: null,            label: 'Amount'   },
+                                    { key: 'status',        label: 'Status'   },
+                                    { key: null,            label: 'Actions'  },
                                 ].map(({ key, label }) => (
                                     <th
                                         key={label}
@@ -207,7 +178,7 @@ export default function Orders() {
                             </tr>
                         </thead>
                         <tbody>
-                            {loading.orders && [1, 2, 3, 4, 5].map((i) => (
+                            {loading.orders && [1,2,3,4,5].map((i) => (
                                 <tr key={i}>
                                     <td className="table-td"><div className="shimmer h-4 w-28 rounded-md" /></td>
                                     <td className="table-td"><div className="shimmer h-4 w-10 rounded-md" /></td>
@@ -215,21 +186,17 @@ export default function Orders() {
                                     <td className="table-td"><div className="shimmer h-4 w-20 rounded-md" /></td>
                                     <td className="table-td"><div className="shimmer h-4 w-20 rounded-md" /></td>
                                     <td className="table-td"><div className="shimmer h-5 w-20 rounded-full" /></td>
-                                    <td className="table-td">
-                                        <div className="flex gap-1">
-                                            <div className="shimmer h-6 w-16 rounded-lg" />
-                                            <div className="shimmer h-6 w-14 rounded-lg" />
-                                        </div>
-                                    </td>
+                                    <td className="table-td"><div className="flex gap-1"><div className="shimmer h-6 w-16 rounded-lg" /><div className="shimmer h-6 w-14 rounded-lg" /></div></td>
                                 </tr>
                             ))}
                             {!loading.orders && paged.length === 0 && (
                                 <tr><td colSpan={7} className="py-12 text-center text-gray-400 text-sm">No orders found</td></tr>
                             )}
                             {!loading.orders && paged.map((o) => (
-                                <OrderRow
+                                <OrderTableRow
                                     key={o.id}
                                     order={o}
+                                    paid={payByOrder[o.id] || 0}
                                     loading={loading}
                                     onConfirm={() => confirmOrder(o.id)}
                                     onPrepare={() => prepareOrder(o.id)}
@@ -254,66 +221,5 @@ export default function Orders() {
                 )}
             </div>
         </div>
-    )
-}
-
-function OrderRow({ order, loading, onConfirm, onPrepare, onDeliver, onCancel }) {
-    const busy = (key) => !!loading[`${key}_${order.id}`]
-    const anyBusy = busy('confirm') || busy('prepare') || busy('deliver') || busy('cancel')
-
-    const amount = order.rate && order.seedlings_required
-        ? parseFloat(order.rate) * parseFloat(order.seedlings_required)
-        : null
-
-    return (
-        <tr className="hover:bg-gray-50 transition-colors">
-            <td className="table-td font-medium text-gray-900">{order.name}</td>
-            <td className="table-td">{order.acre}</td>
-            <td className="table-td">{order.trays_required}</td>
-            <td className="table-td text-gray-500">{formatDateIST(order.delivery_date)}</td>
-            <td className="table-td font-medium text-gray-900">
-                {amount != null ? `₹${amount.toLocaleString('en-IN')}` : <span className="text-gray-300">—</span>}
-            </td>
-            <td className="table-td"><StatusBadge status={order.status} /></td>
-            <td className="table-td">
-                <div className="flex items-center gap-1 flex-wrap">
-                    {order.status === 'PENDING' && (
-                        <ActionBtn id={`confirm-${order.id}`} label="Confirm" color="blue" loading={busy('confirm')} disabled={anyBusy} onClick={onConfirm} />
-                    )}
-                    {order.status === 'CONFIRMED' && (
-                        <ActionBtn id={`prepare-${order.id}`} label="Prepare" color="purple" loading={busy('prepare')} disabled={anyBusy} onClick={onPrepare} />
-                    )}
-                    {order.status === 'PREPARED' && (
-                        <ActionBtn id={`deliver-${order.id}`} label="Deliver" color="green" loading={busy('deliver')} disabled={anyBusy} onClick={onDeliver} />
-                    )}
-                    {['PENDING', 'CONFIRMED', 'PREPARED'].includes(order.status) && (
-                        <ActionBtn id={`cancel-${order.id}`} label="Cancel" color="red" loading={busy('cancel')} disabled={anyBusy} onClick={onCancel} />
-                    )}
-                </div>
-            </td>
-        </tr>
-    )
-}
-
-function ActionBtn({ id, label, color, loading, disabled, onClick, fullWidth }) {
-    const colors = {
-        blue: 'bg-blue-100 text-blue-700 hover:bg-blue-200',
-        purple: 'bg-purple-100 text-purple-700 hover:bg-purple-200',
-        green: 'bg-green-100 text-green-700 hover:bg-green-200',
-        red: 'bg-red-100 text-red-700 hover:bg-red-200',
-    }
-    const widthClass = fullWidth ? 'w-full py-2 text-sm flex justify-center items-center' : 'px-2.5 py-1 text-xs'
-    return (
-        <button
-            id={id}
-            onClick={onClick}
-            disabled={disabled}
-            className={`${widthClass} rounded-lg font-semibold transition-colors disabled:opacity-50 ${colors[color]}`}
-        >
-            {loading
-                ? <span className="inline-block w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                : label
-            }
-        </button>
     )
 }

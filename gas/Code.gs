@@ -72,6 +72,11 @@ function doGet(e) {
     if (action === 'getWorkers') {
       return respond(workersSheetToObjects());
     }
+    if (action === 'getPayments') {
+      const rows = sheetToObjects(getSheet('Payments'));
+      const orderId = e.parameter.order_id;
+      return respond(orderId ? rows.filter(r => String(r.order_id) === String(orderId)) : rows);
+    }
 
     return respondError('Unknown GET action: ' + action);
   } catch (err) {
@@ -93,6 +98,7 @@ function doPost(e) {
     if (action === 'addWorker')      return addWorker(payload.data);
     if (action === 'updateWorker')   return updateWorker(payload.id, payload.fields);
     if (action === 'saveAttendance') return saveAttendance(payload.date, payload.records);
+    if (action === 'addPayment')     return addPayment(payload.data);
 
     return respondError('Unknown POST action: ' + action);
   } catch (err) {
@@ -332,6 +338,30 @@ function updateWorker(id, fields) {
       if (fields[h] !== undefined) sheet.getRange(rowIdx, i + 1).setValue(fields[h]);
     });
     return respond(workersSheetToObjects().find(w => String(w.id) === String(id)) || {});
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// ══════════════════════════════════════════════════
+// addPayment — records a payment against an order
+// Payments sheet columns: id, order_id, amount, type, note, date
+// ══════════════════════════════════════════════════
+function addPayment(data) {
+  const lock = LockService.getScriptLock();
+  lock.tryLock(5000);
+  try {
+    const sheet = getSheet('Payments');
+    const payment = {
+      id:       Utilities.getUuid(),
+      order_id: data.order_id,
+      amount:   Number(data.amount),
+      type:     data.type || 'PARTIAL',
+      note:     data.note || '',
+      date:     new Date().toISOString(),
+    };
+    sheet.appendRow(objectToRow(sheet, payment));
+    return respond(payment);
   } finally {
     lock.releaseLock();
   }

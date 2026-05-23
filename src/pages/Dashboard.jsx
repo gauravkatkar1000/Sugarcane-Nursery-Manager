@@ -1,22 +1,32 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Package, ShoppingCart, AlertTriangle, ArrowRight, Sprout } from 'lucide-react'
+import { Package, ShoppingCart, AlertTriangle, ArrowRight, Sprout, CreditCard } from 'lucide-react'
 import useAppStore from '../store/useAppStore'
-import StatusBadge from '../components/StatusBadge'
 import Modal from '../components/Modal'
+import { OrderCard, OrderTableRow } from '../components/OrderCard'
 import { ITEM_LABELS, ITEM_UNITS, LOW_STOCK_THRESHOLDS } from '../utils/constants'
 import { getStockItem, netAvailable } from '../utils/stock'
-import { formatFullDateIST, formatDateIST } from '../utils/dateUtils'
+import { formatFullDateIST } from '../utils/dateUtils'
 
 export default function Dashboard() {
-    const orders = useAppStore((s) => s.orders)
-    const stock = useAppStore((s) => s.stock)
-    const loading = useAppStore((s) => s.loading)
+    const orders       = useAppStore((s) => s.orders)
+    const stock        = useAppStore((s) => s.stock)
+    const loading      = useAppStore((s) => s.loading)
+    const payments     = useAppStore((s) => s.payments)
     const confirmOrder = useAppStore((s) => s.confirmOrder)
     const prepareOrder = useAppStore((s) => s.prepareOrder)
     const deliverOrder = useAppStore((s) => s.deliverOrder)
-    const cancelOrder = useAppStore((s) => s.cancelOrder)
+    const cancelOrder  = useAppStore((s) => s.cancelOrder)
     const [cancelTarget, setCancelTarget] = useState(null)
+
+    const payByOrder = useMemo(() => {
+        const map = {}
+        payments.forEach((p) => {
+            if (!map[p.order_id]) map[p.order_id] = 0
+            map[p.order_id] += p.type === 'REFUND' ? -Number(p.amount) : Number(p.amount)
+        })
+        return map
+    }, [payments])
 
     const stats = useMemo(() => ({
         pending: orders.filter((o) => o.status === 'PENDING').length,
@@ -39,6 +49,28 @@ export default function Dashboard() {
         [...orders].filter((o) => o.status !== 'CANCELLED').sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5)
         , [orders])
 
+    const paymentStats = useMemo(() => {
+        const activeOrders = orders.filter((o) => o.status !== 'CANCELLED')
+        let totalBilled = 0, totalPaid = 0, totalPending = 0, refundDue = 0
+
+        activeOrders.forEach((o) => {
+            const total = o.rate && o.seedlings_required
+                ? parseFloat(o.rate) * parseFloat(o.seedlings_required) : 0
+            const paid = Math.max(0, payByOrder[o.id] || 0)
+            totalBilled  += total
+            totalPaid    += paid
+            totalPending += Math.max(0, total - paid)
+        })
+
+        // Advances on cancelled orders still in hand (pending refund)
+        orders.filter((o) => o.status === 'CANCELLED').forEach((o) => {
+            const net = payByOrder[o.id] || 0
+            if (net > 0) refundDue += net
+        })
+
+        return { totalBilled, totalPaid, totalPending, refundDue }
+    }, [orders, payByOrder])
+
     return (
         <div className="space-y-6">
             {/* ── Welcome banner ────────────────────────────── */}
@@ -52,23 +84,65 @@ export default function Dashboard() {
                 </div>
             </div>
 
-            {/* ── Order stats ───────────────────────────────── */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                    { label: 'Pending',   value: stats.pending,   color: 'text-amber-600'  },
-                    { label: 'Confirmed', value: stats.confirmed, color: 'text-blue-600'   },
-                    { label: 'Prepared',  value: stats.prepared,  color: 'text-purple-600' },
-                    { label: 'Delivered', value: stats.delivered, color: 'text-green-600'  },
-                ].map(({ label, value, color }) => (
-                    <div key={label} className="card p-4">
-                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{label}</p>
-                        {loading.orders
-                            ? <div className="shimmer h-9 w-14 rounded-lg mt-1" />
-                            : <p className={`text-3xl font-bold mt-1 ${color}`}>{value}</p>
-                        }
-                        <p className="text-xs text-gray-400 mt-1">orders</p>
+            {/* ── Payment summary ───────────────────────────── */}
+            <div className="card p-5">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                        <CreditCard className="w-4 h-4 text-emerald-600" />
+                        Payment Summary
+                    </h3>
+                    <Link to="/payments" className="text-xs text-emerald-600 font-medium hover:underline flex items-center gap-1">
+                        View all <ArrowRight className="w-3 h-3" />
+                    </Link>
+                </div>
+                {loading.payments || loading.orders ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        {[1,2,3,4].map((i) => <div key={i} className="shimmer h-16 rounded-xl" />)}
                     </div>
-                ))}
+                ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        {[
+                            { label: 'Total Billed', value: paymentStats.totalBilled,  color: 'text-gray-900',    bg: 'bg-gray-50',    border: 'border-gray-100'   },
+                            { label: 'Received',     value: paymentStats.totalPaid,    color: 'text-green-700',   bg: 'bg-green-50',   border: 'border-green-100'  },
+                            { label: 'Pending',      value: paymentStats.totalPending, color: 'text-red-700',     bg: 'bg-red-50',     border: 'border-red-100'    },
+                            { label: 'Refund Due',   value: paymentStats.refundDue,    color: 'text-orange-700',  bg: 'bg-orange-50',  border: 'border-orange-100' },
+                        ].map(({ label, value, color, bg, border }) => (
+                            <div key={label} className={`${bg} border ${border} rounded-xl p-3 text-center`}>
+                                <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">{label}</p>
+                                <p className={`text-sm font-bold ${color}`}>₹{value.toLocaleString('en-IN')}</p>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* ── Order stats ───────────────────────────────── */}
+            <div className="card p-5">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                        <ShoppingCart className="w-4 h-4 text-brand-600" />
+                        Order Summary
+                    </h3>
+                    <Link to="/orders" className="text-xs text-brand-600 font-medium hover:underline flex items-center gap-1">
+                        View all <ArrowRight className="w-3 h-3" />
+                    </Link>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {[
+                        { label: 'Pending',   value: stats.pending,   color: 'text-amber-700',  bg: 'bg-amber-50',  border: 'border-amber-100'  },
+                        { label: 'Confirmed', value: stats.confirmed, color: 'text-blue-700',   bg: 'bg-blue-50',   border: 'border-blue-100'   },
+                        { label: 'Prepared',  value: stats.prepared,  color: 'text-purple-700', bg: 'bg-purple-50', border: 'border-purple-100' },
+                        { label: 'Delivered', value: stats.delivered, color: 'text-green-700',  bg: 'bg-green-50',  border: 'border-green-100'  },
+                    ].map(({ label, value, color, bg, border }) => (
+                        <div key={label} className={`${bg} border ${border} rounded-xl p-3 text-center`}>
+                            <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">{label}</p>
+                            {loading.orders
+                                ? <div className="shimmer h-5 w-8 rounded mx-auto" />
+                                : <p className={`text-xl font-bold ${color}`}>{value}</p>
+                            }
+                        </div>
+                    ))}
+                </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -213,54 +287,18 @@ export default function Dashboard() {
                     <>
                         {/* Mobile Cards */}
                         <div className="md:hidden flex flex-col gap-3">
-                            {recentOrders.map((o) => {
-                                const amount = o.rate && o.seedlings_required
-                                    ? parseFloat(o.rate) * parseFloat(o.seedlings_required)
-                                    : null
-                                const anyBusy = !!(loading[`confirm_${o.id}`] || loading[`prepare_${o.id}`] || loading[`deliver_${o.id}`] || loading[`cancel_${o.id}`])
-                                return (
-                                <div key={o.id} className="bg-white border rounded-xl p-4 shadow-sm space-y-3">
-                                    <div className="flex items-center justify-between">
-                                        <h3 className="font-bold text-gray-900 text-lg">{o.name}</h3>
-                                        <StatusBadge status={o.status} />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2 text-center text-sm">
-                                        <div className="bg-gray-50 rounded-lg p-2 border border-gray-100">
-                                            <p className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-0.5">Acre</p>
-                                            <p className="font-semibold text-gray-800">{o.acre}</p>
-                                        </div>
-                                        <div className="bg-gray-50 rounded-lg p-2 border border-gray-100">
-                                            <p className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-0.5">Trays</p>
-                                            <p className="font-semibold text-gray-800">{o.trays_required}</p>
-                                        </div>
-                                        <div className="bg-brand-50 rounded-lg p-2 border border-brand-100/50">
-                                            <p className="text-[10px] uppercase text-brand-600/80 font-bold tracking-wider mb-0.5">Target</p>
-                                            <p className="font-semibold text-brand-700 text-xs sm:text-sm mt-0.5">{formatDateIST(o.delivery_date)}</p>
-                                        </div>
-                                        <div className="bg-green-50 rounded-lg p-2 border border-green-100/50">
-                                            <p className="text-[10px] uppercase text-green-600/80 font-bold tracking-wider mb-0.5">Amount</p>
-                                            <p className="font-semibold text-green-700 text-xs sm:text-sm mt-0.5">
-                                                {amount != null ? `₹${amount.toLocaleString('en-IN')}` : '—'}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    {['PENDING', 'CONFIRMED', 'PREPARED'].includes(o.status) && (
-                                        <div className="border-t border-gray-100 pt-3 grid grid-cols-2 gap-2">
-                                            {o.status === 'PENDING' && (
-                                                <DashActionBtn label="Confirm" color="blue" mobile loading={loading[`confirm_${o.id}`]} disabled={anyBusy} onClick={() => confirmOrder(o.id)} />
-                                            )}
-                                            {o.status === 'CONFIRMED' && (
-                                                <DashActionBtn label="Prepare" color="purple" mobile loading={loading[`prepare_${o.id}`]} disabled={anyBusy} onClick={() => prepareOrder(o.id)} />
-                                            )}
-                                            {o.status === 'PREPARED' && (
-                                                <DashActionBtn label="Deliver" color="green" mobile loading={loading[`deliver_${o.id}`]} disabled={anyBusy} onClick={() => deliverOrder(o.id)} />
-                                            )}
-                                            <DashActionBtn label="Cancel" color="red" mobile loading={loading[`cancel_${o.id}`]} disabled={anyBusy} onClick={() => setCancelTarget(o)} />
-                                        </div>
-                                    )}
-                                </div>
-                                )
-                            })}
+                            {recentOrders.map((o) => (
+                                <OrderCard
+                                    key={o.id}
+                                    order={o}
+                                    paid={payByOrder[o.id] || 0}
+                                    loading={loading}
+                                    onConfirm={() => confirmOrder(o.id)}
+                                    onPrepare={() => prepareOrder(o.id)}
+                                    onDeliver={() => deliverOrder(o.id)}
+                                    onCancel={() => setCancelTarget(o)}
+                                />
+                            ))}
                         </div>
 
                         {/* Desktop Table */}
@@ -274,40 +312,18 @@ export default function Dashboard() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {recentOrders.map((o) => {
-                                        const amount = o.rate && o.seedlings_required
-                                            ? parseFloat(o.rate) * parseFloat(o.seedlings_required)
-                                            : null
-                                        const anyBusy = !!(loading[`confirm_${o.id}`] || loading[`prepare_${o.id}`] || loading[`deliver_${o.id}`] || loading[`cancel_${o.id}`])
-                                        return (
-                                        <tr key={o.id} className="hover:bg-gray-50 transition-colors">
-                                            <td className="table-td font-medium text-gray-900">{o.name}</td>
-                                            <td className="table-td">{o.acre} ac</td>
-                                            <td className="table-td">{o.trays_required}</td>
-                                            <td className="table-td">{formatDateIST(o.delivery_date)}</td>
-                                            <td className="table-td font-medium text-gray-900">
-                                                {amount != null ? `₹${amount.toLocaleString('en-IN')}` : <span className="text-gray-300">—</span>}
-                                            </td>
-                                            <td className="table-td"><StatusBadge status={o.status} /></td>
-                                            <td className="table-td">
-                                                <div className="flex items-center gap-1 flex-wrap">
-                                                    {o.status === 'PENDING' && (
-                                                        <DashActionBtn label="Confirm" color="blue" loading={loading[`confirm_${o.id}`]} disabled={anyBusy} onClick={() => confirmOrder(o.id)} />
-                                                    )}
-                                                    {o.status === 'CONFIRMED' && (
-                                                        <DashActionBtn label="Prepare" color="purple" loading={loading[`prepare_${o.id}`]} disabled={anyBusy} onClick={() => prepareOrder(o.id)} />
-                                                    )}
-                                                    {o.status === 'PREPARED' && (
-                                                        <DashActionBtn label="Deliver" color="green" loading={loading[`deliver_${o.id}`]} disabled={anyBusy} onClick={() => deliverOrder(o.id)} />
-                                                    )}
-                                                    {['PENDING', 'CONFIRMED', 'PREPARED'].includes(o.status) && (
-                                                        <DashActionBtn label="Cancel" color="red" loading={loading[`cancel_${o.id}`]} disabled={anyBusy} onClick={() => setCancelTarget(o)} />
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        )
-                                    })}
+                                    {recentOrders.map((o) => (
+                                        <OrderTableRow
+                                            key={o.id}
+                                            order={o}
+                                            paid={payByOrder[o.id] || 0}
+                                            loading={loading}
+                                            onConfirm={() => confirmOrder(o.id)}
+                                            onPrepare={() => prepareOrder(o.id)}
+                                            onDeliver={() => deliverOrder(o.id)}
+                                            onCancel={() => setCancelTarget(o)}
+                                        />
+                                    ))}
                                 </tbody>
                             </table>
                         </div>
@@ -344,25 +360,3 @@ export default function Dashboard() {
     )
 }
 
-function DashActionBtn({ label, color, loading, disabled, onClick, mobile }) {
-    const colors = {
-        blue:   'bg-blue-100 text-blue-700 hover:bg-blue-200',
-        purple: 'bg-purple-100 text-purple-700 hover:bg-purple-200',
-        green:  'bg-green-100 text-green-700 hover:bg-green-200',
-        red:    'bg-red-100 text-red-700 hover:bg-red-200',
-    }
-    return (
-        <button
-            onClick={onClick}
-            disabled={disabled}
-            className={`rounded-lg font-semibold transition-colors disabled:opacity-50 flex items-center justify-center ${colors[color]} ${
-                mobile ? 'w-full py-2.5 text-sm' : 'px-2.5 py-1 text-xs'
-            }`}
-        >
-            {loading
-                ? <span className="inline-block w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                : label
-            }
-        </button>
-    )
-}

@@ -7,6 +7,7 @@ import Stock from './pages/Stock'
 import AddStock from './pages/AddStock'
 import Help from './pages/Help'
 import Labour from './pages/Labour'
+import Payments from './pages/Payments'
 
 export default function App() {
   return (
@@ -21,6 +22,7 @@ export default function App() {
           <Route path="add-stock" element={<AddStock />} />
           <Route path="help" element={<Help />} />
           <Route path="labour" element={<Labour />} />
+          <Route path="payments" element={<Payments />} />
         </Route>
       </Routes>
     </BrowserRouter>

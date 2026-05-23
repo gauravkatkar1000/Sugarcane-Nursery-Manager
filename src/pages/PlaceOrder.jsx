@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Calculator, CheckCircle, AlertCircle, XCircle, Zap, ShoppingCart } from 'lucide-react'
+import { Calculator, CheckCircle, AlertCircle, XCircle, Zap, ShoppingCart, IndianRupee } from 'lucide-react'
 import useAppStore from '../store/useAppStore'
 import { calcOrder } from '../utils/calculations'
 import { checkStockAvailability } from '../utils/calculations'
@@ -13,12 +13,14 @@ export default function PlaceOrder() {
     const navigate = useNavigate()
     const placeOrder = useAppStore((s) => s.placeOrder)
     const confirmOrder = useAppStore((s) => s.confirmOrder)
+    const addPayment = useAppStore((s) => s.addPayment)
     const stock = useAppStore((s) => s.stock)
     const loading = useAppStore((s) => s.loading)
 
     const [form, setForm] = useState({
         name: '', acre: '', rate: '', delivery_date: today(),
     })
+    const [advance, setAdvance] = useState('')
 
     const calculated = useMemo(() => {
         const acre = parseFloat(form.acre)
@@ -37,10 +39,14 @@ export default function PlaceOrder() {
 
     const handleCreate = async (andConfirm = false) => {
         const order = await placeOrder(form)
-        if (order && andConfirm) {
+        if (!order) return
+        if (advance && Number(advance) > 0) {
+            await addPayment(order.id, Number(advance), 'ADVANCE', 'Advance at order creation')
+        }
+        if (andConfirm) {
             await confirmOrder(order.id)
         }
-        if (order) navigate('/orders')
+        navigate('/orders')
     }
 
     const busy = loading.placeOrder
@@ -98,12 +104,56 @@ export default function PlaceOrder() {
                             <p className="text-xs text-gray-500 mt-1">Seedlings Required</p>
                         </div>
                     </div>
-                    {form.rate && (
-                        <div className="mt-3 text-center bg-white rounded-xl p-3 shadow-sm">
-                            <p className="text-xl font-bold text-gray-900">₹{(parseFloat(form.rate) * calculated.seedlings_required).toLocaleString()}</p>
-                            <p className="text-xs text-gray-500 mt-1">Total Order Value</p>
-                        </div>
-                    )}
+                    {form.rate && (() => {
+                        const total = parseFloat(form.rate) * calculated.seedlings_required
+                        const advanceAmt = Number(advance) || 0
+                        const balance = Math.max(0, total - advanceAmt)
+                        return (
+                            <>
+                                <div className="mt-3 bg-white rounded-xl p-3 shadow-sm">
+                                    <div className="text-center mb-3">
+                                        <p className="text-xl font-bold text-gray-900">₹{total.toLocaleString('en-IN')}</p>
+                                        <p className="text-xs text-gray-500 mt-0.5">Total Order Value</p>
+                                    </div>
+
+                                    {/* Advance payment input */}
+                                    <div className="border-t border-gray-100 pt-3">
+                                        <label className="label text-brand-700">Advance Payment (optional)</label>
+                                        <div className="relative">
+                                            <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                            <input
+                                                type="number"
+                                                className="input pl-8"
+                                                placeholder="0"
+                                                min="0"
+                                                max={total}
+                                                value={advance}
+                                                onChange={(e) => setAdvance(e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Breakdown: paid + balance */}
+                                    {advanceAmt > 0 && (
+                                        <div className="mt-3 grid grid-cols-2 gap-2 text-center">
+                                            <div className="bg-green-50 rounded-lg p-2 border border-green-100">
+                                                <p className="text-xs font-bold text-green-700">₹{advanceAmt.toLocaleString('en-IN')}</p>
+                                                <p className="text-[10px] text-green-600 mt-0.5">Advance Paid</p>
+                                            </div>
+                                            <div className={`rounded-lg p-2 border ${balance > 0 ? 'bg-red-50 border-red-100' : 'bg-green-50 border-green-100'}`}>
+                                                <p className={`text-xs font-bold ${balance > 0 ? 'text-red-700' : 'text-green-700'}`}>
+                                                    ₹{balance.toLocaleString('en-IN')}
+                                                </p>
+                                                <p className={`text-[10px] mt-0.5 ${balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                                    {balance > 0 ? 'Balance Due' : 'Fully Paid'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </>
+                        )
+                    })()}
                 </div>
             )}
 

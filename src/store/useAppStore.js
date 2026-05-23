@@ -17,6 +17,7 @@ const useAppStore = create((set, get) => ({
     stock: [],
     ledger: [],
     workers: [],
+    payments: [],
     loading: {},
     error: null,
 
@@ -64,8 +65,35 @@ const useAppStore = create((set, get) => ({
         }
     },
 
+    fetchPayments: async () => {
+        get().setLoading('payments', true);
+        try {
+            const payments = await api.getPayments();
+            set({ payments });
+        } catch (e) {
+            toast.error('Failed to load payments: ' + e.message);
+        } finally {
+            get().setLoading('payments', false);
+        }
+    },
+
+    addPayment: async (order_id, amount, type, note) => {
+        get().setLoading('addPayment', true);
+        try {
+            const payment = await api.addPayment({ order_id, amount, type, note });
+            set((s) => ({ payments: [...s.payments, payment] }));
+            toast.success('Payment recorded!');
+            return true;
+        } catch (e) {
+            toast.error('Payment failed: ' + e.message);
+            return false;
+        } finally {
+            get().setLoading('addPayment', false);
+        }
+    },
+
     fetchAll: async () => {
-        await Promise.all([get().fetchOrders(), get().fetchStock()]);
+        await Promise.all([get().fetchOrders(), get().fetchStock(), get().fetchPayments()]);
     },
 
     // ── place order ──────────────────────────────────────────

@@ -2,24 +2,26 @@ import { Outlet, NavLink } from 'react-router-dom'
 import { useEffect } from 'react'
 import {
     LayoutDashboard, Package,
-    ClipboardList, Sprout, HelpCircle, Users
+    ClipboardList, Sprout, HelpCircle, Users, CreditCard
 } from 'lucide-react'
 import useAppStore from '../store/useAppStore'
 
 const navItems = [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { to: '/orders', label: 'Orders', icon: ClipboardList },
-    { to: '/stock', label: 'Stock', icon: Package },
-    { to: '/labour', label: 'Labour', icon: Users },
-    { to: '/help', label: 'Help', icon: HelpCircle },
+    { to: '/orders',    label: 'Orders',    icon: ClipboardList },
+    { to: '/payments',  label: 'Payments',  icon: CreditCard },
+    { to: '/stock',     label: 'Stock',     icon: Package },
+    { to: '/labour',    label: 'Labour',    icon: Users },
+    { to: '/help',      label: 'Help',      icon: HelpCircle },
 ]
 
 const bottomNavItems = [
-    { to: '/dashboard', label: 'Home',   icon: LayoutDashboard },
-    { to: '/orders',    label: 'Orders', icon: ClipboardList },
-    { to: '/stock',     label: 'Stock',  icon: Package },
-    { to: '/labour',    label: 'Labour', icon: Users },
-    { to: '/help',      label: 'Help',   icon: HelpCircle },
+    { to: '/dashboard', label: 'Home',     icon: LayoutDashboard },
+    { to: '/orders',    label: 'Orders',   icon: ClipboardList },
+    { to: '/payments',  label: 'Payments', icon: CreditCard },
+    { to: '/stock',     label: 'Stock',    icon: Package },
+    { to: '/labour',    label: 'Labour',   icon: Users },
+    { to: '/help',      label: 'Help',     icon: HelpCircle },
 ]
 
 export default function Layout() {
@@ -80,14 +82,14 @@ export default function Layout() {
                             key={to}
                             to={to}
                             className={({ isActive }) =>
-                                `flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px] text-[10px] font-semibold transition-colors ${
+                                `flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[52px] text-[9px] font-semibold transition-colors ${
                                     isActive ? 'text-brand-600' : 'text-gray-400'
                                 }`
                             }
                         >
                             {({ isActive }) => (
                                 <>
-                                    <Icon className={`w-5 h-5 transition-transform ${isActive ? 'scale-110' : ''}`} />
+                                    <Icon className={`w-4 h-4 transition-transform ${isActive ? 'scale-110' : ''}`} />
                                     {label}
                                 </>
                             )}

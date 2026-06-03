@@ -150,8 +150,20 @@ export function OrderCard({ order, paid = 0, loading, onConfirm, onPrepare, onDe
         <>
             <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
                 {/* Header strip */}
-                <div className="flex items-center justify-between px-4 pt-4 pb-2">
-                    <h3 className="font-bold text-gray-900 text-base leading-tight">{order.name}</h3>
+                <div className="flex items-start justify-between px-4 pt-4 pb-2">
+                    <div>
+                        <h3 className="font-bold text-gray-900 text-base leading-tight">{order.name}</h3>
+                        {(order.location || order.variety) && (
+                            <div className="flex flex-wrap gap-1.5 mt-1">
+                                {order.location && (
+                                    <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full font-medium">📍 {order.location}</span>
+                                )}
+                                {order.variety && (
+                                    <span className="text-[10px] bg-brand-50 text-brand-600 px-1.5 py-0.5 rounded-full font-medium">🌿 {order.variety}</span>
+                                )}
+                            </div>
+                        )}
+                    </div>
                     <StatusBadge status={order.status} />
                 </div>
 
@@ -262,7 +274,19 @@ export function OrderTableRow({ order, paid = 0, loading, onConfirm, onPrepare, 
     return (
         <>
             <tr className="hover:bg-gray-50 transition-colors">
-                <td className="table-td font-medium text-gray-900">{order.name}</td>
+                <td className="table-td">
+                    <p className="font-medium text-gray-900">{order.name}</p>
+                    {(order.location || order.variety) && (
+                        <div className="flex flex-wrap gap-1 mt-0.5">
+                            {order.location && (
+                                <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full font-medium">📍 {order.location}</span>
+                            )}
+                            {order.variety && (
+                                <span className="text-[10px] bg-brand-50 text-brand-600 px-1.5 py-0.5 rounded-full font-medium">🌿 {order.variety}</span>
+                            )}
+                        </div>
+                    )}
+                </td>
                 <td className="table-td">{order.acre}</td>
                 <td className="table-td">{order.trays_required}</td>
                 <td className="table-td text-gray-500">{formatDateIST(order.delivery_date)}</td>

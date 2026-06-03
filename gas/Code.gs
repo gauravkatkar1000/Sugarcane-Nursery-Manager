@@ -118,6 +118,8 @@ function createOrder(data) {
     const order = {
       id,
       name: data.name,
+      location: data.location || '',
+      variety: data.variety || '',
       acre: data.acre,
       rate: data.rate,
       trays_required: data.trays_required,

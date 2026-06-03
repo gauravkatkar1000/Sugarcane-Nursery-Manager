@@ -18,7 +18,7 @@ export default function PlaceOrder() {
     const loading = useAppStore((s) => s.loading)
 
     const [form, setForm] = useState({
-        name: '', acre: '', rate: '', delivery_date: today(),
+        name: '', acre: '', rate: '', delivery_date: today(), location: '', variety: '',
     })
     const [advance, setAdvance] = useState('')
 
@@ -71,6 +71,14 @@ export default function PlaceOrder() {
                     <div>
                         <label className="label">Customer Name *</label>
                         <input id="order-name" className="input" placeholder="e.g. Ramesh Patel" maxLength={100} value={form.name} onChange={set('name')} />
+                    </div>
+                    <div>
+                        <label className="label">Location</label>
+                        <input id="order-location" className="input" placeholder="e.g. Pune, Nashik" maxLength={100} value={form.location} onChange={set('location')} />
+                    </div>
+                    <div>
+                        <label className="label">Variety</label>
+                        <input id="order-variety" className="input" placeholder="e.g. Co-86032, Co-0238" maxLength={100} value={form.variety} onChange={set('variety')} />
                     </div>
                     <div>
                         <label className="label">Acre *</label>

@@ -41,7 +41,13 @@ export default function Orders() {
     const filtered = useMemo(() => {
         return orders
             .filter((o) => {
-                if (search && !o.name.toLowerCase().includes(search.toLowerCase())) return false
+                if (search) {
+                    const q = search.toLowerCase()
+                    const match = o.name.toLowerCase().includes(q) ||
+                        (o.location || '').toLowerCase().includes(q) ||
+                        (o.variety || '').toLowerCase().includes(q)
+                    if (!match) return false
+                }
                 if (statusFilter && o.status !== statusFilter) return false
                 if (dateFrom && o.delivery_date < dateFrom) return false
                 if (dateTo && o.delivery_date > dateTo) return false

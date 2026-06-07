@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Search, ChevronUp, ChevronDown, Plus, ClipboardList } from 'lucide-react'
 import useAppStore from '../store/useAppStore'
@@ -11,10 +11,17 @@ export default function Orders() {
     const orders       = useAppStore((s) => s.orders)
     const loading      = useAppStore((s) => s.loading)
     const payments     = useAppStore((s) => s.payments)
-    const confirmOrder = useAppStore((s) => s.confirmOrder)
-    const prepareOrder = useAppStore((s) => s.prepareOrder)
-    const deliverOrder = useAppStore((s) => s.deliverOrder)
-    const cancelOrder  = useAppStore((s) => s.cancelOrder)
+    const confirmOrder  = useAppStore((s) => s.confirmOrder)
+    const prepareOrder  = useAppStore((s) => s.prepareOrder)
+    const deliverOrder  = useAppStore((s) => s.deliverOrder)
+    const cancelOrder   = useAppStore((s) => s.cancelOrder)
+    const fetchOrders   = useAppStore((s) => s.fetchOrders)
+    const fetchPayments = useAppStore((s) => s.fetchPayments)
+
+    useEffect(() => {
+        fetchOrders()
+        fetchPayments()
+    }, [])
 
     const payByOrder = useMemo(() => {
         const map = {}

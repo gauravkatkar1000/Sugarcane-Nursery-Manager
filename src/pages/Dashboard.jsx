@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Package, ShoppingCart, AlertTriangle, ArrowRight, Sprout, CreditCard } from 'lucide-react'
 import useAppStore from '../store/useAppStore'
@@ -13,11 +13,18 @@ export default function Dashboard() {
     const stock        = useAppStore((s) => s.stock)
     const loading      = useAppStore((s) => s.loading)
     const payments     = useAppStore((s) => s.payments)
-    const confirmOrder = useAppStore((s) => s.confirmOrder)
-    const prepareOrder = useAppStore((s) => s.prepareOrder)
-    const deliverOrder = useAppStore((s) => s.deliverOrder)
-    const cancelOrder  = useAppStore((s) => s.cancelOrder)
+    const confirmOrder  = useAppStore((s) => s.confirmOrder)
+    const prepareOrder  = useAppStore((s) => s.prepareOrder)
+    const deliverOrder  = useAppStore((s) => s.deliverOrder)
+    const cancelOrder   = useAppStore((s) => s.cancelOrder)
+    const fetchOrders   = useAppStore((s) => s.fetchOrders)
+    const fetchPayments = useAppStore((s) => s.fetchPayments)
     const [cancelTarget, setCancelTarget] = useState(null)
+
+    useEffect(() => {
+        fetchOrders()
+        fetchPayments()
+    }, [])
 
     const payByOrder = useMemo(() => {
         const map = {}

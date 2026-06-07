@@ -20,6 +20,8 @@ const useAppStore = create((set, get) => ({
     payments: [],
     loading: {},
     error: null,
+    ordersLoaded: false,
+    paymentsLoaded: false,
 
     // ── helpers ─────────────────────────────────────────────
     setLoading: (key, val) => set((s) => ({ loading: { ...s.loading, [key]: val } })),
@@ -29,11 +31,12 @@ const useAppStore = create((set, get) => ({
     },
 
     // ── fetch ────────────────────────────────────────────────
-    fetchOrders: async () => {
+    fetchOrders: async ({ force = false } = {}) => {
+        if (!force && get().ordersLoaded) return;
         get().setLoading('orders', true);
         try {
             const orders = await api.getOrders();
-            set({ orders: orders.map(o => ({ ...o, order_type: o.order_type || 'SEEDLING' })) });
+            set({ orders: orders.map(o => ({ ...o, order_type: o.order_type || 'SEEDLING' })), ordersLoaded: true });
         } catch (e) {
             toast.error('Failed to load orders: ' + e.message);
         } finally {
@@ -65,11 +68,12 @@ const useAppStore = create((set, get) => ({
         }
     },
 
-    fetchPayments: async () => {
+    fetchPayments: async ({ force = false } = {}) => {
+        if (!force && get().paymentsLoaded) return;
         get().setLoading('payments', true);
         try {
             const payments = await api.getPayments();
-            set({ payments });
+            set({ payments, paymentsLoaded: true });
         } catch (e) {
             toast.error('Failed to load payments: ' + e.message);
         } finally {
@@ -93,7 +97,7 @@ const useAppStore = create((set, get) => ({
     },
 
     fetchAll: async () => {
-        await Promise.all([get().fetchOrders(), get().fetchStock(), get().fetchPayments()]);
+        await get().fetchStock();
     },
 
     // ── place order ──────────────────────────────────────────

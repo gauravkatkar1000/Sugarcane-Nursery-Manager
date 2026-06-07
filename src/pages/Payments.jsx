@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { CreditCard, Plus, CheckCircle, Search, IndianRupee, RotateCcw } from 'lucide-react'
 import useAppStore from '../store/useAppStore'
 import Modal from '../components/Modal'
@@ -43,10 +43,17 @@ function TypeTag({ type }) {
 }
 
 export default function Payments() {
-    const orders     = useAppStore((s) => s.orders)
-    const payments   = useAppStore((s) => s.payments)
-    const loading    = useAppStore((s) => s.loading)
-    const addPayment = useAppStore((s) => s.addPayment)
+    const orders        = useAppStore((s) => s.orders)
+    const payments      = useAppStore((s) => s.payments)
+    const loading       = useAppStore((s) => s.loading)
+    const addPayment    = useAppStore((s) => s.addPayment)
+    const fetchOrders   = useAppStore((s) => s.fetchOrders)
+    const fetchPayments = useAppStore((s) => s.fetchPayments)
+
+    useEffect(() => {
+        fetchOrders()
+        fetchPayments()
+    }, [])
 
     // Payment modal state
     const [selectedOrder, setSelectedOrder] = useState(null)

@@ -129,13 +129,23 @@ function PayModal({ order, total, paid, onClose }) {
 }
 
 // ── Mobile card ──────────────────────────────────────────────
+// '-' means not applicable — treat same as empty
+const hasVal = (v) => v && v !== '-'
+
 export function OrderCard({ order, paid = 0, loading, onConfirm, onPrepare, onDeliver, onCancel }) {
     const [showPay, setShowPay] = useState(false)
 
+    const isExcess  = order.order_type === 'EXCESS_SUGARCANE'
+    const excessQty = isExcess ? Number(order.excess_qty || 0) : 0
     const isCancelled = order.status === 'CANCELLED'
-    const total = order.rate && order.seedlings_required
-        ? parseFloat(order.rate) * parseFloat(order.seedlings_required)
-        : null
+    // Prefer saved total_amount; fall back to computed for old orders
+    const total = order.total_amount
+        ? Number(order.total_amount)
+        : order.rate
+            ? isExcess
+                ? excessQty ? parseFloat(order.rate) * excessQty : null
+                : order.seedlings_required ? parseFloat(order.rate) * parseFloat(order.seedlings_required) : null
+            : null
     const balance    = total != null ? Math.max(0, total - paid) : null
     const payStatus  = computePayStatus(total, paid, isCancelled)
     const canPay     = !isCancelled && total != null && payStatus !== 'PAID'
@@ -152,13 +162,18 @@ export function OrderCard({ order, paid = 0, loading, onConfirm, onPrepare, onDe
                 {/* Header strip */}
                 <div className="flex items-start justify-between px-4 pt-4 pb-2">
                     <div>
-                        <h3 className="font-bold text-gray-900 text-base leading-tight">{order.name}</h3>
-                        {(order.location || order.variety) && (
+                        <div className="flex items-center gap-2">
+                            <h3 className="font-bold text-gray-900 text-base leading-tight">{order.name}</h3>
+                            {isExcess && (
+                                <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-semibold">Excess Sugarcane</span>
+                            )}
+                        </div>
+                        {(hasVal(order.location) || (hasVal(order.variety) && !isExcess)) && (
                             <div className="flex flex-wrap gap-1.5 mt-1">
-                                {order.location && (
+                                {hasVal(order.location) && (
                                     <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full font-medium">📍 {order.location}</span>
                                 )}
-                                {order.variety && (
+                                {hasVal(order.variety) && !isExcess && (
                                     <span className="text-[10px] bg-brand-50 text-brand-600 px-1.5 py-0.5 rounded-full font-medium">🌿 {order.variety}</span>
                                 )}
                             </div>
@@ -169,15 +184,26 @@ export function OrderCard({ order, paid = 0, loading, onConfirm, onPrepare, onDe
 
                 {/* Stats row */}
                 <div className="flex items-center gap-0 px-4 pb-3 border-b border-gray-100">
-                    <div className="flex-1 text-center">
-                        <p className="text-[10px] uppercase text-gray-400 font-bold tracking-wider">Acre</p>
-                        <p className="text-sm font-semibold text-gray-800 mt-0.5">{order.acre}</p>
-                    </div>
-                    <div className="w-px h-8 bg-gray-100" />
-                    <div className="flex-1 text-center">
-                        <p className="text-[10px] uppercase text-gray-400 font-bold tracking-wider">Trays</p>
-                        <p className="text-sm font-semibold text-gray-800 mt-0.5">{order.trays_required}</p>
-                    </div>
+                    {isExcess ? (
+                        <>
+                            <div className="flex-1 text-center">
+                                <p className="text-[10px] uppercase text-gray-400 font-bold tracking-wider">Qty (kg)</p>
+                                <p className="text-sm font-semibold text-amber-700 mt-0.5">{excessQty}</p>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div className="flex-1 text-center">
+                                <p className="text-[10px] uppercase text-gray-400 font-bold tracking-wider">Acre</p>
+                                <p className="text-sm font-semibold text-gray-800 mt-0.5">{order.acre}</p>
+                            </div>
+                            <div className="w-px h-8 bg-gray-100" />
+                            <div className="flex-1 text-center">
+                                <p className="text-[10px] uppercase text-gray-400 font-bold tracking-wider">Trays</p>
+                                <p className="text-sm font-semibold text-gray-800 mt-0.5">{order.trays_required}</p>
+                            </div>
+                        </>
+                    )}
                     <div className="w-px h-8 bg-gray-100" />
                     <div className="flex-1 text-center">
                         <p className="text-[10px] uppercase text-gray-400 font-bold tracking-wider">Delivery</p>
@@ -235,11 +261,11 @@ export function OrderCard({ order, paid = 0, loading, onConfirm, onPrepare, onDe
                             <ActionBtn fullWidth id={`m-confirm-${order.id}`} label="Confirm" color="blue"
                                 loading={loading[`confirm_${order.id}`]} disabled={anyBusy} onClick={onConfirm} />
                         )}
-                        {order.status === 'CONFIRMED' && (
+                        {order.status === 'CONFIRMED' && !isExcess && (
                             <ActionBtn fullWidth id={`m-prepare-${order.id}`} label="Prepare" color="purple"
                                 loading={loading[`prepare_${order.id}`]} disabled={anyBusy} onClick={onPrepare} />
                         )}
-                        {order.status === 'PREPARED' && (
+                        {(order.status === 'PREPARED' || (isExcess && order.status === 'CONFIRMED')) && (
                             <ActionBtn fullWidth id={`m-deliver-${order.id}`} label="Deliver" color="green"
                                 loading={loading[`deliver_${order.id}`]} disabled={anyBusy} onClick={onDeliver} />
                         )}
@@ -260,13 +286,19 @@ export function OrderCard({ order, paid = 0, loading, onConfirm, onPrepare, onDe
 export function OrderTableRow({ order, paid = 0, loading, onConfirm, onPrepare, onDeliver, onCancel }) {
     const [showPay, setShowPay] = useState(false)
 
+    const isExcess    = order.order_type === 'EXCESS_SUGARCANE'
+    const excessQty   = isExcess ? Number(order.excess_qty || 0) : 0
     const isCancelled = order.status === 'CANCELLED'
     const busy = (key) => !!loading[`${key}_${order.id}`]
     const anyBusy = busy('confirm') || busy('prepare') || busy('deliver') || busy('cancel')
 
-    const total     = order.rate && order.seedlings_required
-        ? parseFloat(order.rate) * parseFloat(order.seedlings_required)
-        : null
+    const total = order.total_amount
+        ? Number(order.total_amount)
+        : order.rate
+            ? isExcess
+                ? excessQty ? parseFloat(order.rate) * excessQty : null
+                : order.seedlings_required ? parseFloat(order.rate) * parseFloat(order.seedlings_required) : null
+            : null
     const balance   = total != null ? Math.max(0, total - paid) : null
     const payStatus = computePayStatus(total, paid, isCancelled)
     const canPay    = !isCancelled && total != null && payStatus !== 'PAID'
@@ -275,21 +307,37 @@ export function OrderTableRow({ order, paid = 0, loading, onConfirm, onPrepare, 
         <>
             <tr className="hover:bg-gray-50 transition-colors">
                 <td className="table-td">
-                    <p className="font-medium text-gray-900">{order.name}</p>
-                    {(order.location || order.variety) && (
+                    <div className="flex items-center gap-1.5">
+                        <p className="font-medium text-gray-900">{order.name}</p>
+                        {isExcess && (
+                            <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-semibold shrink-0">Excess Sugarcane</span>
+                        )}
+                    </div>
+                    {(hasVal(order.location) || (hasVal(order.variety) && !isExcess)) && (
                         <div className="flex flex-wrap gap-1 mt-0.5">
-                            {order.location && (
+                            {hasVal(order.location) && (
                                 <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full font-medium">📍 {order.location}</span>
                             )}
-                            {order.variety && (
+                            {hasVal(order.variety) && !isExcess && (
                                 <span className="text-[10px] bg-brand-50 text-brand-600 px-1.5 py-0.5 rounded-full font-medium">🌿 {order.variety}</span>
                             )}
                         </div>
                     )}
                 </td>
-                <td className="table-td">{order.acre}</td>
-                <td className="table-td">{order.trays_required}</td>
+                <td className="table-td">
+                    {isExcess
+                        ? <span className="text-amber-700 font-medium">{excessQty} kg</span>
+                        : order.acre}
+                </td>
+                <td className="table-td">
+                    {isExcess ? <span className="text-gray-400">—</span> : order.trays_required}
+                </td>
                 <td className="table-td text-gray-500">{formatDateIST(order.delivery_date)}</td>
+                <td className="table-td">
+                    {order.rate && order.rate !== '-'
+                        ? <span className="text-gray-700">₹{parseFloat(order.rate).toLocaleString('en-IN')}<span className="text-gray-400 text-[10px]">/{isExcess ? 'kg' : 'seedling'}</span></span>
+                        : <span className="text-gray-300">—</span>}
+                </td>
                 <td className="table-td">
                     {total != null ? (
                         <div>
@@ -327,11 +375,11 @@ export function OrderTableRow({ order, paid = 0, loading, onConfirm, onPrepare, 
                             <ActionBtn id={`confirm-${order.id}`} label="Confirm" color="blue"
                                 loading={busy('confirm')} disabled={anyBusy} onClick={onConfirm} />
                         )}
-                        {order.status === 'CONFIRMED' && (
+                        {order.status === 'CONFIRMED' && !isExcess && (
                             <ActionBtn id={`prepare-${order.id}`} label="Prepare" color="purple"
                                 loading={busy('prepare')} disabled={anyBusy} onClick={onPrepare} />
                         )}
-                        {order.status === 'PREPARED' && (
+                        {(order.status === 'PREPARED' || (isExcess && order.status === 'CONFIRMED')) && (
                             <ActionBtn id={`deliver-${order.id}`} label="Deliver" color="green"
                                 loading={busy('deliver')} disabled={anyBusy} onClick={onDeliver} />
                         )}

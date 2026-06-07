@@ -4,6 +4,15 @@
 export { CONVERSIONS } from './constants';
 import { CONVERSIONS } from './constants';
 
+export function checkExcessStockAvailability(stock, qty_kg) {
+    const s = stock.find((x) => x.item === 'excess_sugarcane');
+    const avail = s ? (s.available || 0) - (s.reserved || 0) : 0;
+    if (avail >= qty_kg) {
+        return { status: 'green', message: `${avail.toFixed(0)} kg available — sufficient for this order.` };
+    }
+    return { status: 'red', message: `Only ${avail.toFixed(0)} kg available, need ${qty_kg} kg.` };
+}
+
 // ── Order calculations ──────────────────────────────────
 export function calcOrder(acre) {
     const trays_required = Math.ceil(acre * CONVERSIONS.TRAYS_PER_ACRE);

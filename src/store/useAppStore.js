@@ -33,7 +33,7 @@ const useAppStore = create((set, get) => ({
         get().setLoading('orders', true);
         try {
             const orders = await api.getOrders();
-            set({ orders });
+            set({ orders: orders.map(o => ({ ...o, order_type: o.order_type || 'SEEDLING' })) });
         } catch (e) {
             toast.error('Failed to load orders: ' + e.message);
         } finally {
@@ -100,8 +100,17 @@ const useAppStore = create((set, get) => ({
     placeOrder: async (formData) => {
         get().setLoading('placeOrder', true);
         try {
-            const { trays_required, seedlings_required } = calcOrder(formData.acre);
-            const order = await api.createOrder({ ...formData, trays_required, seedlings_required });
+            let orderData;
+            if (formData.order_type === 'EXCESS_SUGARCANE') {
+                const qty = Number(formData.excess_qty);
+                const total_amount = formData.rate ? parseFloat(formData.rate) * qty : 0;
+                orderData = { ...formData, trays_required: 0, seedlings_required: 0, total_amount };
+            } else {
+                const { trays_required, seedlings_required } = calcOrder(formData.acre);
+                const total_amount = formData.rate ? parseFloat(formData.rate) * seedlings_required : 0;
+                orderData = { ...formData, trays_required, seedlings_required, total_amount };
+            }
+            const order = await api.createOrder(orderData);
             set((s) => ({ orders: [order, ...s.orders] }));
             toast.success('Order created!');
             return order;
@@ -128,17 +137,17 @@ const useAppStore = create((set, get) => ({
                 return false;
             }
 
-            // Atomic write: ledger + recalc
-            const updatedStock = await api.addLedgerEntries(ledgerEntries);
-            get()._applyStockUpdate(updatedStock);
+            if (ledgerEntries.length > 0) {
+                const updatedStock = await api.addLedgerEntries(ledgerEntries);
+                get()._applyStockUpdate(updatedStock);
+            }
 
-            // Store reservation breakdown in order row
             const updatedOrder = await api.updateOrder(orderId, {
                 status: 'CONFIRMED',
-                reserved_ready_tray: reservedBreakdown.ready_tray,
-                reserved_seedlings: reservedBreakdown.seedlings,
-                reserved_tray: reservedBreakdown.tray,
-                reserved_cocopeat: reservedBreakdown.cocopeat,
+                reserved_ready_tray: reservedBreakdown?.ready_tray || 0,
+                reserved_seedlings:  reservedBreakdown?.seedlings  || 0,
+                reserved_tray:       reservedBreakdown?.tray       || 0,
+                reserved_cocopeat:   reservedBreakdown?.cocopeat   || 0,
             });
 
             set((s) => ({ orders: s.orders.map((o) => o.id === orderId ? updatedOrder : o) }));

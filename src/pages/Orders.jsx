@@ -163,10 +163,11 @@ export default function Orders() {
                             <tr>
                                 {[
                                     { key: 'name',          label: 'Customer' },
-                                    { key: 'acre',          label: 'Acre'     },
-                                    { key: 'trays_required',label: 'Trays'    },
-                                    { key: 'delivery_date', label: 'Delivery' },
-                                    { key: null,            label: 'Amount'   },
+                                    { key: 'acre',          label: 'Acre / Qty' },
+                                    { key: 'trays_required',label: 'Trays'      },
+                                    { key: 'delivery_date', label: 'Delivery'   },
+                                    { key: 'rate',          label: 'Rate'       },
+                                    { key: null,            label: 'Amount'     },
                                     { key: 'status',        label: 'Status'   },
                                     { key: null,            label: 'Actions'  },
                                 ].map(({ key, label }) => (

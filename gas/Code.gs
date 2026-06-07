@@ -107,6 +107,26 @@ function doPost(e) {
 }
 
 // ══════════════════════════════════════════════════
+// migrateOrdersSheet
+// Run once from Apps Script editor to add new columns.
+// Safe to run multiple times — skips columns that exist.
+// ══════════════════════════════════════════════════
+function migrateOrdersSheet() {
+  const sheet = getSheet('Orders');
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const newCols = ['order_type', 'excess_qty', 'total_amount'];
+  newCols.forEach(col => {
+    if (!headers.includes(col)) {
+      const nextCol = sheet.getLastColumn() + 1;
+      sheet.getRange(1, nextCol).setValue(col);
+      Logger.log('Added column: ' + col);
+    } else {
+      Logger.log('Column already exists: ' + col);
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════
 // createOrder
 // ══════════════════════════════════════════════════
 function createOrder(data) {
@@ -115,15 +135,25 @@ function createOrder(data) {
   try {
     const sheet = getSheet('Orders');
     const id = Utilities.getUuid();
+    const qty = data.order_type === 'EXCESS_SUGARCANE'
+      ? Number(data.excess_qty || 0)
+      : Number(data.seedlings_required || 0);
+    const total_amount = data.rate ? Number(data.rate) * qty : 0;
+
+    const isExcess = (data.order_type || 'SEEDLING') === 'EXCESS_SUGARCANE';
     const order = {
       id,
       name: data.name,
-      location: data.location || '',
-      variety: data.variety || '',
-      acre: data.acre,
-      rate: data.rate,
-      trays_required: data.trays_required,
-      seedlings_required: data.seedlings_required,
+      location: data.location || '-',
+      variety: data.variety || '-',
+      order_type: data.order_type || 'SEEDLING',
+      // fields not applicable to the order type show '-' in the sheet
+      acre:              isExcess ? '-' : (data.acre || ''),
+      trays_required:    isExcess ? '-' : (data.trays_required || 0),
+      seedlings_required: isExcess ? '-' : (data.seedlings_required || 0),
+      excess_qty:        isExcess ? (data.excess_qty || 0) : '-',
+      rate: data.rate || '',
+      total_amount,
       delivery_date: data.delivery_date,
       status: 'PENDING',
       created_at: new Date().toISOString(),
@@ -144,7 +174,7 @@ function createOrder(data) {
 // ══════════════════════════════════════════════════
 const VALID_TRANSITIONS = {
   PENDING:   ['CONFIRMED', 'CANCELLED'],
-  CONFIRMED: ['PREPARED', 'CANCELLED'],
+  CONFIRMED: ['PREPARED', 'DELIVERED', 'CANCELLED'],
   PREPARED:  ['DELIVERED', 'CANCELLED'],
 };
 
